@@ -34,3 +34,7 @@ export const Protocols = Object.freeze({
   TUN: 'tun',
   MTPROTO: 'mtproto',
 });
+
+export const MULTI_CLIENT_PROTOCOLS = new Set([
+  'shadowsocks', 'vless', 'vmess', 'trojan', 'hysteria', 'wireguard', 'mtproto',
+]);

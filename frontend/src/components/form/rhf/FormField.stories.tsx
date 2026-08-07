@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { FormField } from './FormField';
 import { useZodForm } from './useZodForm';
 
-const GB = 1024 * 1024 * 1024;
+import { bytesPerGB } from '@/lib/clients/units';
 
 const meta = {
   title: 'Form/RHF/FormField',
@@ -30,7 +30,7 @@ const meta = {
     tooltip: { description: 'Form.Item tooltip shown next to the label.' },
     extra: { description: 'Helper text rendered below the input.' },
     valueProp: { description: 'Prop the child receives the value on: `value` (default) or `checked` for switches.' },
-    transform: { description: 'Optional input/output mappers, e.g. bytes stored in the form but GB shown in the input.' },
+    transform: { description: 'Optional input/output mappers, e.g. bytes stored in the form but bytesPerGB shown in the input.' },
     onAfterChange: { description: 'Called with the stored value after every change.' },
     rules: { description: 'Controller-level validation rules applied on top of the form resolver.' },
     required: { description: 'Marks the label with the required asterisk.' },
@@ -80,18 +80,18 @@ const TrafficSchema = z.object({
 });
 
 function TrafficDemo() {
-  const methods = useZodForm(TrafficSchema, { defaultValues: { totalBytes: 50 * GB } });
+  const methods = useZodForm(TrafficSchema, { defaultValues: { totalBytes: 50 * bytesPerGB } });
   const totalBytes = methods.watch('totalBytes');
   return (
     <FormProvider {...methods}>
       <Form layout="vertical" style={{ maxWidth: 360 }}>
         <FormField
           name="totalBytes"
-          label="Total traffic (GB)"
+          label="Total traffic (bytesPerGB)"
           extra="Stored on the client as bytes; 0 means unlimited"
           transform={{
-            input: (value) => (typeof value === 'number' ? value / GB : value),
-            output: (value) => (typeof value === 'number' ? value * GB : 0),
+            input: (value) => (typeof value === 'number' ? value / bytesPerGB : value),
+            output: (value) => (typeof value === 'number' ? value * bytesPerGB : 0),
           }}
         >
           <InputNumber min={0} style={{ width: '100%' }} />

@@ -28,6 +28,7 @@ export const ClientRecordSchema = z.object({
   group: z.string().optional(),
   comment: z.string().optional(),
   enable: z.boolean().optional(),
+  tariffName: z.string().optional(),
   reset: z.number().optional(),
   inboundIds: nullableNumberArray.optional(),
   traffic: ClientTrafficSchema.nullable().optional(),
@@ -41,6 +42,7 @@ export const ClientRecordSchema = z.object({
   adTag: z.string().optional(),
   createdAt: z.number().optional(),
   updatedAt: z.number().optional(),
+  tariffStartedAt: z.number().nullable().optional(),
 }).loose();
 
 export const InboundOptionSchema = z.object({
@@ -85,6 +87,23 @@ export const ClientsSummarySchema = z.object({
 
 const nullableClientArray = z.array(ClientRecordSchema).nullable().transform((v) => v ?? []);
 
+export const GroupSummarySchema = z.object({
+  name: z.string(),
+  clientCount: z.number(),
+  trafficUsed: z.number().nullable().transform((v) => v ?? 0),
+  up: z.number().nullable().transform((v) => v ?? 0),
+  down: z.number().nullable().transform((v) => v ?? 0),
+  tariffId: z.number().nullable(),
+  tariffName: z.string().optional(),
+  tariff: z.object({
+    id: z.number(),
+    name: z.string(),
+    trafficStrategy: z.string().optional(),
+    inboundStrategy: z.string().optional(),
+    enable: z.boolean().optional(),
+  }).nullable().optional(),
+});
+
 export const ClientPageResponseSchema = z.object({
   items: nullableClientArray,
   total: z.number(),
@@ -92,7 +111,7 @@ export const ClientPageResponseSchema = z.object({
   page: z.number(),
   pageSize: z.number(),
   summary: ClientsSummarySchema.nullable().optional(),
-  groups: nullableStringArray.optional(),
+  groups: z.array(z.string()).nullable().optional(),
 });
 
 // A per-client external link surfaced in the client's subscription:
@@ -166,14 +185,6 @@ export const ActiveInboundsByNodeSchema = z
   .record(z.string(), nullableStringArray)
   .nullable()
   .transform((v) => v ?? {});
-
-export const GroupSummarySchema = z.object({
-  name: z.string(),
-  clientCount: z.number(),
-  trafficUsed: z.number().nullable().transform((v) => v ?? 0),
-  up: z.number().nullable().transform((v) => v ?? 0),
-  down: z.number().nullable().transform((v) => v ?? 0),
-});
 
 export const GroupSummaryListSchema = z.array(GroupSummarySchema).nullable().transform((v) => v ?? []);
 

@@ -12,7 +12,7 @@ const EMPTY: GroupFormValues = { group: '' };
 interface BulkAddToGroupModalProps {
   open: boolean;
   count: number;
-  groups: string[];
+  groups: { name: string }[];
   onOpenChange: (open: boolean) => void;
   onSubmit: (group: string) => Promise<{ affected?: number } | null>;
 }
@@ -74,7 +74,7 @@ export default function BulkAddToGroupModal({
             >
               <AutoComplete
                 placeholder={t('pages.clients.groupName')}
-                options={groups.map((g) => ({ value: g }))}
+                options={groups.map((g) => ({ value: g.name }))}
                 allowClear
                 autoFocus
               />

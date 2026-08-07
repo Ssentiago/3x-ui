@@ -6,8 +6,7 @@ import { SelectAllClearButtons } from '@/components/form';
 import type { InboundOption } from '@/hooks/useClients';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import type { BulkAttachResult } from '@/schemas/client';
-
-const MULTI_USER_PROTOCOLS = new Set(['vmess', 'vless', 'trojan', 'hysteria', 'shadowsocks', 'wireguard', 'mtproto']);
+import { MULTI_CLIENT_PROTOCOLS } from '@/schemas/primitives/protocol';
 
 interface BulkAttachInboundsModalProps {
   open: boolean;
@@ -35,7 +34,7 @@ export default function BulkAttachInboundsModal({
 
   const targetOptions = useMemo(() => {
     return (inbounds || [])
-      .filter((ib) => MULTI_USER_PROTOCOLS.has((ib.protocol || '').toLowerCase()))
+      .filter((ib) => MULTI_CLIENT_PROTOCOLS.has((ib.protocol || '').toLowerCase()))
       .map((ib) => ({
         value: ib.id,
         label: formatInboundLabel(ib.tag, ib.remark),

@@ -7,7 +7,7 @@ import { ClientBulkAdjustFormSchema, type ClientBulkAdjustFormValues } from '@/s
 import { TLS_FLOW_CONTROL } from '@/schemas/primitives/flow';
 import { FormField } from '@/components/form/rhf';
 
-const GB = 1024 * 1024 * 1024;
+import { bytesPerGB } from '@/lib/clients/units';
 
 const FLOW_CLEAR = 'none';
 
@@ -44,7 +44,7 @@ export default function ClientBulkAdjustModal({ open, count, onOpenChange, onSub
     const { addDays: days, addGB: gb, flow: flowValue } = validated.data;
     setSubmitting(true);
     try {
-      const bytes = Math.trunc(gb * GB);
+      const bytes = Math.trunc(gb * bytesPerGB);
       const result = await onSubmit(days, bytes, flowValue);
       if (!result) return;
       const ok = result.adjusted ?? 0;

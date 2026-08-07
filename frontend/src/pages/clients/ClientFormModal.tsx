@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AutoComplete,
@@ -31,19 +31,22 @@ import { normalizeClientIps, type ClientIpInfo } from '@/lib/clients/ip-log';
 import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { FormField } from '@/components/form/rhf';
 import { TLS_FLOW_CONTROL } from '@/schemas/primitives';
+import { MULTI_CLIENT_PROTOCOLS } from '@/schemas/primitives/protocol';
 import type { ClientRecord, InboundOption, ExternalLink, ExternalLinkInput } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
-import { ClientFormSchema, ClientCreateFormSchema, type ClientFormValues } from '@/schemas/client';
+import { ClientFormSchema, ClientCreateFormSchema, type ClientFormValues, GroupSummarySchema } from '@/schemas/client';
+import { useQuery } from '@tanstack/react-query';
+import { keys } from '@/api/queryKeys';
+import ManagedField from '@/components/ManagedField';
+import { useTariffOverrides } from '@/hooks/useTariffOverrides';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305'] as const;
 
-const MULTI_CLIENT_PROTOCOLS = new Set([
-  'shadowsocks', 'vless', 'vmess', 'trojan', 'hysteria', 'wireguard', 'mtproto',
-]);
-
 const CLIENT_FORM_MODAL_Z_INDEX = 1000;
 const CLIENT_IP_LOG_MODAL_Z_INDEX = CLIENT_FORM_MODAL_Z_INDEX + 1;
+
+const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as const;
 
 interface ExternalLinkRow {
   kind: 'link' | 'subscription';
@@ -86,7 +89,6 @@ interface ClientFormModalProps {
   attachedExternalLinks?: ExternalLink[];
   attachedIds?: number[];
   tgBotEnable?: boolean;
-  groups?: string[];
   save: (
     payload: Record<string, unknown> | SaveCreatePayload,
     meta: SaveMetaEdit | SaveMetaCreate,
@@ -143,15 +145,7 @@ function toExternalLinkRows(links: ExternalLink[] | undefined): ExternalLinkRow[
   }));
 }
 
-function bytesToGB(bytes: number): number {
-  if (!bytes || bytes <= 0) return 0;
-  return Math.round((bytes / (1024 * 1024 * 1024)) * 100) / 100;
-}
-
-export function gbToBytes(gb: number): number {
-  if (!gb || gb <= 0) return 0;
-  return Math.round(gb * 1024 * 1024 * 1024);
-}
+import { bytesToGB, gbToBytes } from '@/lib/clients/units';
 
 export function resolveTotalBytes(originalBytes: number | null | undefined, displayedGB: number): number {
   if (originalBytes != null && displayedGB === bytesToGB(originalBytes)) {
@@ -168,7 +162,6 @@ export default function ClientFormModal({
   attachedExternalLinks = [],
   attachedIds = [],
   tgBotEnable = false,
-  groups = [],
   save,
   resetTraffic,
   onOpenChange,
@@ -192,6 +185,8 @@ export default function ClientFormModal({
   const auth = useWatch({ control: methods.control, name: 'auth' });
   const wgPrivateKey = useWatch({ control: methods.control, name: 'wgPrivateKey' });
   const limitIp = useWatch({ control: methods.control, name: 'limitIp' });
+  const totalGB = useWatch({ control: methods.control, name: 'totalGB' });
+  const tar = useTariffOverrides(client, isEdit, open);
   const {
     fields: externalLinkFields,
     append: appendExternalLink,
@@ -207,6 +202,43 @@ export default function ClientFormModal({
   const fail2ban = useFail2banStatusQuery();
   const limitIpDisabled = !fail2ban.usable;
   const limitIpNotice = getLimitIpNotice(fail2ban, t);
+
+  const { data: groupsData } = useQuery({
+    queryKey: keys.clients.groups(),
+    queryFn: async () => {
+      const msg = await HttpUtil.get('/panel/api/clients/groups', undefined, { silent: true });
+      return GroupSummarySchema.array().parse(msg?.obj ?? []);
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const groups = useMemo(() => (groupsData ?? []).map((g) => ({
+    name: g.name,
+    tariffId: g.tariffId,
+    tariffName: g.tariffName,
+    tariff: g.tariff,
+  })), [groupsData]);
+
+  const groupValue = useWatch({ control: methods.control, name: 'group' });
+
+  const selectedGroup = useMemo(() => {
+    if (!groupValue || !groups?.length) return null;
+    return groups.find((g) => g.name === groupValue) || null;
+  }, [groupValue, groups]);
+
+  const tariffName = useMemo(() => {
+    return selectedGroup?.tariffName || selectedGroup?.name || '';
+  }, [selectedGroup]);
+
+  const isManaged = useMemo(() => {
+    return !!selectedGroup?.tariff;
+  }, [selectedGroup]);
+  const { isFieldManaged: fieldOverrideFree, makeLocal, returnToTariff, computeDiff } = tar;
+
+  const isFieldManaged = useCallback((f: string) => isManaged && fieldOverrideFree(f), [isManaged, fieldOverrideFree]);
+
+  const expiryManaged = isManaged && isEdit && !!selectedGroup?.tariff?.enable && !delayedStart;
+  const expiryDisabled = expiryManaged && fieldOverrideFree('expiryTime');
 
   function addExternalLinkRow(kind: 'link' | 'subscription') {
     appendExternalLink({ kind, value: '', remark: '' });
@@ -273,6 +305,68 @@ export default function ClientFormModal({
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEdit]);
+
+  // When the user selects a group with a tariff, fetch the resolved effective
+  // values from the API. When the group is cleared (or changed to one without
+  // a tariff), restore the client's own raw values from the client prop.
+  useEffect(() => {
+    if (!selectedGroup?.tariff) {
+      // No tariff group selected — restore raw client values.
+      if (!client) return;
+      const et = Number(client.expiryTime) || 0;
+      methods.setValue('totalGB', bytesToGB(client.totalGB || 0));
+      methods.setValue('limitIp', client.limitIp || 0);
+      if (et < 0) {
+        methods.setValue('delayedStart', true);
+        methods.setValue('delayedDays', Math.round(et / -86400000));
+        methods.setValue('expiryDate', 0);
+      } else {
+        methods.setValue('delayedStart', false);
+        methods.setValue('delayedDays', 0);
+        methods.setValue('expiryDate', et > 0 ? et : 0);
+      }
+      methods.setValue('inboundIds', Array.isArray(attachedIds) ? [...attachedIds] : []);
+      return;
+    }
+    // Tariff group selected — fetch resolved values.
+    if (!client?.email) return;
+    const groupName = selectedGroup.name;
+    let cancelled = false;
+    (async () => {
+      const msg = await HttpUtil.get(
+        `/panel/api/clients/get/resolve/${encodeURIComponent(client.email!)}?group=${encodeURIComponent(groupName)}`,
+      ) as ApiMsg<{ totalGB?: number; expiryTime?: number; limitIp?: number; inboundIds?: number[] }>;
+      if (cancelled || !msg?.success || !msg.obj) return;
+      const r = msg.obj;
+      if (r.totalGB !== undefined && r.totalGB !== null) {
+        methods.setValue('totalGB', bytesToGB(r.totalGB));
+      }
+      if (r.limitIp !== undefined && r.limitIp !== null) {
+        methods.setValue('limitIp', r.limitIp);
+      }
+      if (r.expiryTime !== undefined && r.expiryTime !== null) {
+        if (r.expiryTime < 0) {
+          // Tariff gave a delayed-start value — convert to a concrete future
+          // date so the UI always shows the Date picker, not the Days field.
+          // Use the client's active tariff startedAt when available; fall back
+          // to now when the tariff hasn't started yet (preview).
+          const startDate = client?.tariffStartedAt ?? Date.now();
+          const futureDate = startDate + Math.abs(r.expiryTime);
+          methods.setValue('delayedStart', false);
+          methods.setValue('delayedDays', 0);
+          methods.setValue('expiryDate', futureDate);
+        } else {
+          methods.setValue('delayedStart', false);
+          methods.setValue('delayedDays', 0);
+          methods.setValue('expiryDate', r.expiryTime > 0 ? r.expiryTime : 0);
+        }
+      }
+      if (r.inboundIds !== undefined && r.inboundIds !== null && r.inboundIds.length > 0) {
+        methods.setValue('inboundIds', [...r.inboundIds]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedGroup, methods, client, attachedIds]);
 
   const flowCapableIds = useMemo(() => {
     const ids = new Set<number>();
@@ -474,6 +568,12 @@ export default function ClientFormModal({
     }
   }
 
+  const tariffMode = useCallback((field: string): 'tariff' | 'override' | 'own' => {
+    if (!isManaged) return 'own';
+    if (fieldOverrideFree(field)) return 'tariff';
+    return 'override';
+  }, [isManaged, fieldOverrideFree]);
+
   async function onSubmit() {
     const values = methods.getValues();
     const schema = isEdit ? ClientFormSchema : ClientCreateFormSchema;
@@ -506,6 +606,13 @@ export default function ClientFormModal({
       ? -86400000 * (Number(values.delayedDays) || 0)
       : (values.expiryDate || 0);
     const totalBytes = resolveTotalBytes(client ? (client.totalGB ?? 0) : null, values.totalGB);
+
+    // --- tariff mode flags: frontend tells backend exactly how to treat each field ---
+    const totalGBMode = tariffMode('totalGB');
+    const limitIPMode = tariffMode('limitIP');
+    const expiryTimeMode = tariffMode('expiryTime');
+    const inboundsMode = tariffMode('inbounds');
+
     const clientPayload: Record<string, unknown> = {
       email: values.email.trim(),
       subId: values.subId,
@@ -514,14 +621,18 @@ export default function ClientFormModal({
       auth: values.auth,
       flow: showFlow ? (values.flow || '') : '',
       security: showSecurity ? (values.security || 'auto') : 'auto',
-      totalGB: totalBytes,
-      expiryTime,
       reset: Number(values.reset) || 0,
-      limitIp: Number(values.limitIp) || 0,
       tgId: Number(values.tgId) || 0,
       group: values.group,
       comment: values.comment,
       enable: !!values.enable,
+      // tariff-controlled fields with explicit mode
+      totalGB: totalBytes,
+      totalGBMode,
+      limitIp: Number(values.limitIp) || 0,
+      limitIpMode: limitIPMode,
+      expiryTime,
+      expiryTimeMode,
     };
     const reverseTagValue = showReverseTag ? (values.reverseTag || '').trim() : '';
     if (reverseTagValue) {
@@ -561,10 +672,25 @@ export default function ClientFormModal({
     try {
       let msg;
       if (isEdit && client) {
+        const { toOverride, toReturn } = computeDiff();
+        for (const field of toOverride) {
+          await HttpUtil.post('/panel/api/clients/overrideField', {
+            email: client.email,
+            field,
+          }, JSON_HEADERS);
+        }
+        for (const field of toReturn) {
+          await HttpUtil.post('/panel/api/clients/returnToTariff', {
+            email: client.email,
+            field,
+          }, JSON_HEADERS);
+        }
+        // Attach/detach only when inbounds are NOT tariff-managed.
         const original = new Set(attachedIds || []);
         const next = new Set(values.inboundIds || []);
-        const toAttach = [...next].filter((id) => !original.has(id));
-        const toDetach = [...original].filter((id) => !next.has(id));
+        const skipInboundSync = inboundsMode === 'tariff';
+        const toAttach = skipInboundSync ? [] : [...next].filter((id) => !original.has(id));
+        const toDetach = skipInboundSync ? [] : [...original].filter((id) => !next.has(id));
         msg = await save(clientPayload, {
           isEdit: true,
           email: client.email,
@@ -648,23 +774,56 @@ export default function ClientFormModal({
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={6}>
-                          <FormField
-                            name="totalGB"
-                            label={t('pages.clients.totalGB')}
-                            tooltip={t('pages.clients.totalGBDesc')}
-                            transform={{ output: (v) => Number(v) || 0 }}
-                          >
-                            <InputNumber min={0} step={1} style={{ width: '100%' }} />
-                          </FormField>
+                          <Form.Item label={
+                            <span>
+                              {t('pages.clients.totalGB')}
+                              {isFieldManaged('totalGB') && (
+                                <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>
+                                  {tariffName}
+                                </Tag>
+                              )}
+                            </span>
+                          } tooltip={t('pages.clients.totalGBDesc')}>
+                            <ManagedField
+                              managed={isFieldManaged('totalGB')}
+                              tariffName={tariffName}
+                              onMakeLocal={() => makeLocal('totalGB')}
+                            >
+                              <InputNumber min={0} step={1} style={{ width: '100%' }}
+                                value={totalGB}
+                                disabled={isFieldManaged('totalGB')}
+                                onChange={(v) => methods.setValue('totalGB', Number(v) || 0)} />
+                            </ManagedField>
+                            {isManaged && !isFieldManaged('totalGB') && (
+                              <Button size="small" type="link" onClick={() => returnToTariff('totalGB')}>
+                                {t('pages.clients.returnToTariff')}
+                              </Button>
+                            )}
+                          </Form.Item>
                         </Col>
                         <Col xs={24} md={6}>
-                          <Form.Item label={t('pages.clients.limitIp')} tooltip={t('pages.clients.limitIpDesc')}>
+                          <Form.Item label={
+                            <span>
+                              {t('pages.clients.limitIp')}
+                              {isFieldManaged('limitIP') && (
+                                <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>
+                                  {tariffName}
+                                </Tag>
+                              )}
+                            </span>
+                          } tooltip={t('pages.clients.limitIpDesc')}>
                             <Tooltip title={limitIpNotice || undefined}>
                               <span style={{ display: 'flex', width: '100%' }}>
                                 <Space.Compact style={{ display: 'flex', flex: 1 }}>
-                                  <InputNumber value={limitIp} min={0} disabled={limitIpDisabled}
-                                    style={{ flex: 1, ...(limitIpDisabled ? { pointerEvents: 'none' } : null) }}
-                                    onChange={(v) => methods.setValue('limitIp', Number(v) || 0)} />
+                                  <ManagedField
+                                    managed={isFieldManaged('limitIP')}
+                                    tariffName={tariffName}
+                                    onMakeLocal={() => makeLocal('limitIP')}
+                                  >
+                                    <InputNumber value={limitIp} min={0} disabled={limitIpDisabled || isFieldManaged('limitIP')}
+                                      style={{ flex: 1 }}
+                                      onChange={(v) => methods.setValue('limitIp', Number(v) || 0)} />
+                                  </ManagedField>
                                   {isEdit && (
                                     <Tooltip title={t('pages.clients.ipLog')}>
                                       <Button aria-label={t('pages.clients.ipLog')} icon={<EyeOutlined />} loading={ipsLoading} onClick={openIpsModal}>
@@ -675,13 +834,18 @@ export default function ClientFormModal({
                                 </Space.Compact>
                               </span>
                             </Tooltip>
+                            {isManaged && !isFieldManaged('limitIP') && (
+                              <Button size="small" type="link" onClick={() => returnToTariff('limitIP')}>
+                                {t('pages.clients.returnToTariff')}
+                              </Button>
+                            )}
                           </Form.Item>
                         </Col>
                       </Row>
 
                       <Row gutter={16}>
                         <Col xs={24} md={12}>
-                          {delayedStart ? (
+                          {delayedStart && !expiryManaged ? (
                             <FormField
                               name="delayedDays"
                               label={t('pages.clients.expireDays')}
@@ -691,10 +855,28 @@ export default function ClientFormModal({
                             </FormField>
                           ) : (
                             <Form.Item label={t('pages.clients.expiryTime')}>
-                              <DateTimePicker
-                                value={expiryDayjs}
-                                onChange={(d) => methods.setValue('expiryDate', d ? d.valueOf() : 0)}
-                              />
+                              <Space.Compact style={{ display: 'flex' }}>
+                                <div style={{ flex: 1 }}>
+                                  <ManagedField
+                                    managed={expiryDisabled}
+                                    tariffName={tariffName}
+                                    onMakeLocal={() => makeLocal('expiryTime')}
+                                  >
+                                    <DateTimePicker
+                                      value={expiryDayjs}
+                                      onChange={(d) => methods.setValue('expiryDate', d ? d.valueOf() : 0)}
+                                      disabled={expiryDisabled}
+                                    />
+                                  </ManagedField>
+                                </div>
+                                {isManaged && !isFieldManaged('expiryTime') && (
+                                  <Tooltip title={t('pages.clients.returnToTariffDesc', { field: t('pages.clients.expireDays') })}>
+                                    <Button size="small" type="link" onClick={() => returnToTariff('expiryTime')}>
+                                      {t('pages.clients.returnToTariff')}
+                                    </Button>
+                                  </Tooltip>
+                                )}
+                              </Space.Compact>
                             </Form.Item>
                           )}
                         </Col>
@@ -702,6 +884,7 @@ export default function ClientFormModal({
                           <Form.Item label={t('pages.clients.delayedStart')}>
                             <Switch
                               checked={delayedStart}
+                              disabled={expiryManaged}
                               onChange={(v) => {
                                 methods.setValue('delayedStart', v);
                                 if (v) methods.setValue('expiryDate', 0);
@@ -737,10 +920,15 @@ export default function ClientFormModal({
                           >
                             <AutoComplete
                               placeholder={t('pages.clients.groupPlaceholder')}
-                              options={groups.map((g) => ({ value: g }))}
+                              options={groups.map((g) => ({ value: g.name }))}
                               allowClear
                             />
                           </FormField>
+                          {isManaged && (
+                            <Typography.Text type="secondary" style={{ fontSize: 12, marginTop: -16, display: 'block' }}>
+                              {t('pages.clients.tariffManagedNotice', { name: tariffName })}
+                            </Typography.Text>
+                          )}
                         </Col>
                       </Row>
 
@@ -768,25 +956,49 @@ export default function ClientFormModal({
                         </Row>
                       )}
 
-                      <Form.Item label={t('pages.clients.attachedInbounds')} required={!isEdit}>
-                        <SelectAllClearButtons
-                          options={inboundOptions}
-                          value={inboundIds}
-                          onChange={(v) => methods.setValue('inboundIds', v)}
-                        />
-                        <Select
-                          mode="multiple"
-                          value={inboundIds}
-                          onChange={(v) => methods.setValue('inboundIds', v)}
-                          options={inboundOptions}
-                          placeholder={t('pages.clients.selectInbound')}
-                          maxTagCount="responsive"
-                          placement="topLeft"
-                          listHeight={220}
-                          showSearch={{
-                            filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
-                          }}
-                        />
+                      <Form.Item label={
+                        <span>
+                          {t('pages.clients.attachedInbounds')}
+                          {isFieldManaged('inbounds') && (
+                            <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>
+                              {tariffName}
+                            </Tag>
+                          )}
+                        </span>
+                      } required={!isEdit && !selectedGroup?.tariff}>
+                        {!isManaged && (
+                          <SelectAllClearButtons
+                            options={inboundOptions}
+                            value={inboundIds}
+                            onChange={(v) => methods.setValue('inboundIds', v)}
+                          />
+                        )}
+                        <ManagedField
+                          managed={isFieldManaged('inbounds')}
+                          tariffName={tariffName}
+                          onMakeLocal={() => makeLocal('inbounds')}
+                        >
+                          <Select
+                            key={String(isManaged)}
+                            mode="multiple"
+                            value={inboundIds}
+                            onChange={(v) => methods.setValue('inboundIds', v)}
+                            options={inboundOptions}
+                            placeholder={t('pages.clients.selectInbound')}
+                            maxTagCount="responsive"
+                            placement="topLeft"
+                            listHeight={220}
+                            disabled={isFieldManaged('inbounds')}
+                            showSearch={{
+                              filterOption: (input, option) => ((option?.label as string) || '').toLowerCase().includes(input.toLowerCase()),
+                            }}
+                          />
+                        </ManagedField>
+                        {isManaged && !isFieldManaged('inbounds') && (
+                          <Button size="small" type="link" onClick={() => returnToTariff('inbounds')}>
+                            {t('pages.clients.returnToTariff')}
+                          </Button>
+                        )}
                       </Form.Item>
 
                       <Form.Item>

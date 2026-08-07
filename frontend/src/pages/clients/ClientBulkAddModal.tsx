@@ -9,6 +9,7 @@ import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { RandomUtil, SizeFormatter } from '@/utils';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import { TLS_FLOW_CONTROL } from '@/schemas/primitives';
+import { MULTI_CLIENT_PROTOCOLS } from '@/schemas/primitives/protocol';
 import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { FormField } from '@/components/form/rhf';
 import { useClients, type InboundOption } from '@/hooks/useClients';
@@ -16,10 +17,6 @@ import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2
 import { ClientBulkAddFormSchema, type ClientBulkAddFormValues } from '@/schemas/client';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
-
-const MULTI_CLIENT_PROTOCOLS = new Set([
-  'shadowsocks', 'vless', 'vmess', 'trojan', 'hysteria', 'wireguard',
-]);
 
 const EMPTY: ClientBulkAddFormValues = {
   emailMethod: 0,
@@ -42,7 +39,7 @@ const EMPTY: ClientBulkAddFormValues = {
 interface ClientBulkAddModalProps {
   open: boolean;
   inbounds: InboundOption[];
-  groups?: string[];
+  groups?: { name: string }[];
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
 }
@@ -296,7 +293,7 @@ export default function ClientBulkAddModal({
             >
               <AutoComplete
                 placeholder={t('pages.clients.groupPlaceholder')}
-                options={groups.map((g) => ({ value: g }))}
+                options={groups.map((g) => ({ value: g.name }))}
                 allowClear
               />
             </FormField>

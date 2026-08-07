@@ -580,12 +580,33 @@ export const sections: readonly Section[] = [
       {
         method: 'GET',
         path: '/panel/api/clients/get/:email',
-        summary: 'Fetch one client by email, including the inbound IDs and external config IDs it is attached to.',
+        summary: 'Fetch one client by email with raw (non-resolved) data — inboundIds are the client\'s own client_inbounds rows, not tariff-effective IDs, plus attached external config IDs.',
         params: [
           { name: 'email', in: 'path', type: 'string', desc: 'Client email (unique identifier).' },
         ],
         response:
           '{\n  "success": true,\n  "obj": {\n    "client": { "id": 1, "email": "alice@example.com", ... },\n    "inboundIds": [3, 5],\n    "externalLinks": [{ "kind": "link", "value": "vless://...", "remark": "DE" }]\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/get/resolve/:email',
+        summary: 'Resolve what a client\'s effective values would be if placed in the given group. Returns {totalGB, expiryTime, limitIp, inboundIds} or empty object if the group has no tariff.',
+        params: [
+          { name: 'email', in: 'path', type: 'string', desc: 'Client email.' },
+          { name: 'group', in: 'query', type: 'string', desc: 'Group name to resolve against.' },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": { "totalGB": 536870912000, "expiryTime": -2592000000, "limitIp": 20, "inboundIds": [1, 4, 5] }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/get/effective/:email',
+        summary: 'Return the active tariff metadata, per-field override flags, and fully resolved values for a client. Returns an empty object when the client has no active tariff.',
+        params: [
+          { name: 'email', in: 'path', type: 'string', desc: 'Client email.' },
+        ],
+        response:
+          '{\n  "success": true,\n  "obj": { "tariffId": 7, "tariffName": "Gold", "startedAt": 1714000000000, "endedAt": null, "isTotalGBOverridden": true, "isLimitIPOverridden": false, "isExpiryOverridden": false, "isInboundsOverridden": false, "resolvedTotalGB": 100, "resolvedLimitIP": 3, "resolvedExpiryTime": 1715000000000, "resolvedInboundIds": [1, 2, 5] }\n}',
       },
       {
         method: 'GET',
@@ -730,16 +751,16 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/clients/groups/bulkAdd',
-        summary: 'Add many clients to a group in one call. Updates clients.group_name and patches the matching client entry inside every owning inbound\'s settings JSON in a single transaction. If the group name does not yet exist (in client_groups or as a derived label), it is auto-created as a persistent group. To clear the group label, use /groups/bulkRemove instead.',
+        summary: 'Add many clients to a group in one call. Sets clients.group_name for every email. If the group name does not yet exist (in client_groups or as a derived label), it is auto-created as a persistent group. To clear the group label, use /groups/bulkRemove instead.',
         body: '{\n  "emails": ["alice", "bob"],\n  "group": "customer-a"\n}',
-        response: '{\n  "success": true,\n  "obj": {\n    "affected": 2\n  }\n}',
+        response: '{\n  "success": true,\n  "obj": {}\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/clients/groups/bulkRemove',
-        summary: 'Clear the group label on many clients in one call. Inverse of /groups/bulkAdd. Clients themselves are kept — only the group label is cleared from clients.group_name and from each owning inbound\'s settings JSON. Groups become empty if all their members are removed.',
+        summary: 'Clear the group label on many clients in one call. Inverse of /groups/bulkAdd. Clients themselves are kept — only the group label is cleared from clients.group_name. Groups become empty if all their members are removed.',
         body: '{\n  "emails": ["alice", "bob"]\n}',
-        response: '{\n  "success": true,\n  "obj": {\n    "affected": 2\n  }\n}',
+        response: '{\n  "success": true,\n  "obj": {}\n}',
       },
       {
         method: 'POST',
@@ -795,16 +816,16 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/clients/groups/rename',
-        summary: 'Rename a group. The new name is applied to the client_groups row AND propagated to every matching client (both clients.group_name and the client entry inside every owning inbound\'s settings JSON) in a single transaction. Returns the number of clients whose label was updated.',
+        summary: 'Rename a group. Updates the client_groups row name and propagates the new name to every matching client\'s clients.group_name in a single transaction.',
         body: '{\n  "oldName": "customer-a",\n  "newName": "tier-1"\n}',
-        response: '{\n  "success": true,\n  "obj": {\n    "affected": 5\n  }\n}',
+        response: '{\n  "success": true,\n  "obj": {}\n}',
       },
       {
         method: 'POST',
         path: '/panel/api/clients/groups/delete',
-        summary: 'Remove a group. Deletes the client_groups row and clears the group label from every matching client (both clients.group_name and the inbound settings JSON). The clients themselves are NOT deleted — use /bulkDel after filtering by group for that. Returns the count of clients whose label was cleared.',
+        summary: 'Remove a group. Deletes the client_groups row and clears the group label from every matching client\'s clients.group_name. The clients themselves are NOT deleted — use /bulkDel after filtering by group for that.',
         body: '{\n  "name": "customer-a"\n}',
-        response: '{\n  "success": true,\n  "obj": {\n    "affected": 5\n  }\n}',
+        response: '{\n  "success": true,\n  "obj": {}\n}',
       },
       {
         method: 'POST',
@@ -812,6 +833,12 @@ export const sections: readonly Section[] = [
         summary: 'Reset only the group-level traffic counter shown on the groups page. Snapshots the current up/down sum of the group\'s members as a baseline so the group total reads zero, while leaving each client\'s own counters (and their quotas) untouched. No Xray restart is triggered. Creates the client_groups row if the group exists only as a derived label.',
         body: '{\n  "name": "customer-a"\n}',
         response: '{\n  "success": true,\n  "obj": {\n    "name": "customer-a"\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/groups/resetTariff',
+        summary: 'Detach the tariff from a group and all its clients. Overrides are preserved; non-overridden traffic/expiry/IP and inbounds return to each client’s own values (resolved on-the-fly, no DB mutation).',
+        body: '{\n  "name": "premium"\n}',
       },
       {
         method: 'POST',
@@ -906,6 +933,123 @@ export const sections: readonly Section[] = [
         ],
         response:
           '{\n  "success": true,\n  "obj": [\n    "vless://uuid@host:443?...#user1"\n  ]\n}',
+      },
+    ],
+  },
+
+  {
+    id: 'profiles',
+    title: 'Profiles',
+    description:
+      'Manage reusable profile configurations. Profiles store concrete field values (traffic, expiry, IP limit, inbounds) and can be composed into tariff chains.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/clients/profiles',
+        summary: 'List all profiles with their tariff usage counts.',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/profiles/:id',
+        summary: 'Get a single profile by ID.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Profile ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/profiles/create',
+        summary: 'Create a new profile.',
+        body: '{\n  "name": "BASE",\n  "traffic": 100,\n  "expiryDays": 30,\n  "limitIp": 3,\n  "inboundIds": [1, 2]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/profiles/:id/update',
+        summary: 'Update an existing profile.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Profile ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/profiles/:id/delete',
+        summary: 'Delete a profile. Fails if used by any tariff.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Profile ID.' },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'tariffs',
+    title: 'Tariffs',
+    description:
+      'Manage client group tariffs. Tariffs compose an ordered list of profiles with per-field merge strategies (overwrite or sum for traffic, overwrite or union for inbounds). Changing a tariff takes effect immediately through read-time computation.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/clients/tariffs',
+        summary: 'List all tariffs with their strategies and group usage counts.',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/tariffs/:id',
+        summary: 'Get a single tariff with its profile chain and resolved field values.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Tariff ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/tariffs/create',
+        summary: 'Create a new tariff.',
+        body: '{\n  "name": "Gold",\n  "trafficStrategy": "overwrite",\n  "inboundStrategy": "union"\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/tariffs/:id/update',
+        summary: 'Update an existing tariff. Changes take effect immediately for all clients using this tariff (overridden fields are preserved).',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Tariff ID.' },
+        ],
+        body: '{\n  "name": "Gold",\n  "trafficStrategy": "sum",\n  "inboundStrategy": "union"\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/tariffs/:id/delete',
+        summary: 'Delete a tariff. Fails if any group references it.',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Tariff ID.' },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/tariffs/:id/profiles',
+        summary: 'Set the ordered profile list for a tariff (atomic replace).',
+        params: [
+          { name: 'id', in: 'path', type: 'number', desc: 'Tariff ID.' },
+        ],
+        body: '{\n  "profileIds": [\n    { "id": 1, "position": 0 },\n    { "id": 2, "position": 1 }\n  ]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/tariffs/preview',
+        summary: 'Preview tariff chain resolution for given profiles and strategies.',
+        body: '{\n  "profiles": [\n    { "name": "BASE", "traffic": 100, "expiryDays": 30, "limitIp": 3, "inboundIds": [1, -1] },\n    { "name": "PREMIUM", "traffic": 200 }\n  ],\n  "trafficStrategy": "overwrite",\n  "inboundStrategy": "union"\n}',
+        response: '{\n  "success": true,\n  "obj": {\n    "trafficBytes": 214748364800,\n    "expiryDays": 30,\n    "limitIp": 3,\n    "inboundIds": [1],\n    "trafficSource": "PREMIUM",\n    "expirySource": "BASE",\n    "ipSource": "BASE",\n    "inboundSource": "BASE"\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/overrideField',
+        summary: 'Override a tariff-managed field with a custom value for this client.',
+        body: '{\n  "email": "client@example.com",\n  "field": "totalGB"\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/returnToTariff',
+        summary: 'Return a previously overridden field back to tariff control.',
+        body: '{\n  "email": "client@example.com",\n  "field": "totalGB"\n}',
       },
     ],
   },

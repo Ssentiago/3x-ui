@@ -24,7 +24,7 @@ export default function AddClientsToGroupModal({
   onClose,
   onAdded,
 }: AddClientsToGroupModalProps) {
-  const [groups, setGroups] = useState<string[]>([]);
+  const [groupNames, setGroupNames] = useState<string[]>([]);
 
   const emails = useMemo(() => (source ? readClientEmails(source.settings) : []), [source]);
 
@@ -35,10 +35,12 @@ export default function AddClientsToGroupModal({
       const msg = await HttpUtil.get('/panel/api/clients/groups', undefined, { silent: true });
       if (cancelled) return;
       const list = Array.isArray(msg?.obj) ? (msg.obj as Array<{ name?: string }>) : [];
-      setGroups(list.map((g) => g?.name || '').filter(Boolean));
+      setGroupNames(list.map((g) => g?.name || '').filter(Boolean));
     })();
     return () => { cancelled = true; };
   }, [open]);
+
+  const groups = useMemo(() => groupNames.map((name) => ({ name })), [groupNames]);
 
   return (
     <BulkAddToGroupModal

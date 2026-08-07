@@ -233,13 +233,16 @@ export default function AppSidebar() {
 
   const settingsActive = pathname === '/settings';
   const xrayActive = pathname === '/xray';
+  const groupsActive = pathname.startsWith('/groups');
   const selectedKey = settingsActive
     ? `/settings${hash || '#general'}`
     : xrayActive
       ? `/xray${hash || '#basic'}`
-      : (pathname === '' ? '/' : pathname);
+      : groupsActive
+        ? pathname
+        : (pathname === '' ? '/' : pathname);
 
-  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : null;
+  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : groupsActive ? '/groups' : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));
   useEffect(() => {
     if (openSubmenu) {
@@ -256,7 +259,10 @@ export default function AppSidebar() {
       if (tab.key === '/xray') {
         return { key: tab.key, icon: <Icon />, label: tab.title, children: xrayChildren };
       }
-      return { key: tab.key, icon: <Icon />, label: tab.title, title: '' };
+      if (tab.key === '/groups') {
+        return { key: tab.key, icon: <Icon />, label: tab.title };
+      }
+      return { key: tab.key, icon: <Icon />, label: tab.title };
     }),
   [settingsChildren, xrayChildren]);
 

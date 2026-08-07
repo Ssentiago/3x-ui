@@ -64,6 +64,7 @@ import ClientSpeedTag, { isActiveSpeed } from '@/components/clients/ClientSpeedT
 import ClientCardComment from '@/components/clients/ClientCardComment';
 import AppSidebar from '@/layouts/AppSidebar';
 import { IntlUtil, SizeFormatter } from '@/utils';
+import { gbToBytes } from '@/lib/clients/units';
 import { setMessageInstance } from '@/utils/messageBus';
 import { LazyMount } from '@/components/utility';
 import { SPEED_COLUMN_WIDTH, SPEED_TAG_CLASS_NAME, SPEED_TAG_STYLE } from '@/components/utility/speedTagStyle';
@@ -190,11 +191,6 @@ function readFilterState(): PersistedFilterState {
   } catch {
     return { searchKey: '', filters: emptyFilters(), sort: '', pageSize: null };
   }
-}
-
-function gbToBytes(gb: number | undefined): number {
-  if (!gb || gb <= 0) return 0;
-  return Math.round(gb * 1024 * 1024 * 1024);
 }
 
 const SORT_OPTIONS: { value: string; column: string; order: 'ascend' | 'descend'; labelKey: string }[] = [
@@ -558,7 +554,7 @@ export default function ClientsPage() {
     const row = rowsByEmail.current.get(email);
     if (!row) return;
     const full = await hydrate(row.email);
-    setInfoClient(full ? { ...row, ...full.client, inboundIds: full.inboundIds } : row);
+    setInfoClient(full ? { ...full.client, ...row } : row);
     setInfoOpen(true);
   }, [hydrate]);
 
@@ -1507,7 +1503,6 @@ export default function ClientsPage() {
             attachedExternalLinks={editingExternalLinks}
             inbounds={inbounds}
             tgBotEnable={tgBotEnable}
-            groups={allGroups}
             save={onSave}
             resetTraffic={resetTraffic}
             onOpenChange={setFormOpen}
@@ -1536,7 +1531,7 @@ export default function ClientsPage() {
           <ClientBulkAddModal
             open={bulkAddOpen}
             inbounds={inbounds}
-            groups={allGroups}
+            groups={allGroups.map((g) => ({ name: g }))}
             onOpenChange={setBulkAddOpen}
             onSaved={() => setBulkAddOpen(false)}
           />
@@ -1569,7 +1564,7 @@ export default function ClientsPage() {
           <BulkAddToGroupModal
             open={bulkGroupOpen}
             count={selectedRowKeys.length}
-            groups={allGroups}
+            groups={allGroups.map((g) => ({ name: g }))}
             onOpenChange={setBulkGroupOpen}
             onSubmit={async (group) => {
               const msg = await bulkAddToGroup([...selectedRowKeys], group);
