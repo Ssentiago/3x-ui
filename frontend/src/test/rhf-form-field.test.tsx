@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { FormField, useZodForm } from '@/components/form/rhf';
 
-const GB = 1024 * 1024 * 1024;
+import { bytesPerGB } from '@/lib/clients/units';
 
 const Schema = z.object({
   email: z.string().min(1, 'email-required'),
@@ -19,7 +19,7 @@ type Values = z.infer<typeof Schema>;
 
 function Harness({ onSubmit }: { onSubmit: (values: Values) => void }) {
   const methods = useZodForm(Schema, {
-    defaultValues: { email: '', enabled: false, slug: '', bytes: 2 * GB },
+    defaultValues: { email: '', enabled: false, slug: '', bytes: 2 * bytesPerGB },
   });
   return (
     <FormProvider {...methods}>
@@ -37,8 +37,8 @@ function Harness({ onSubmit }: { onSubmit: (values: Values) => void }) {
           name="bytes"
           label="Traffic"
           transform={{
-            input: (v) => (typeof v === 'number' ? v / GB : v),
-            output: (v) => (typeof v === 'number' ? v * GB : 0),
+            input: (v) => (typeof v === 'number' ? v / bytesPerGB : v),
+            output: (v) => (typeof v === 'number' ? v * bytesPerGB : 0),
           }}
         >
           <InputNumber aria-label="bytes" />
@@ -64,7 +64,7 @@ describe('FormField', () => {
       email: 'a@b.com',
       enabled: true,
       slug: 'hello',
-      bytes: 2 * GB,
+      bytes: 2 * bytesPerGB,
     });
   });
 
@@ -79,7 +79,7 @@ describe('FormField', () => {
     fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit.mock.calls[0][0].bytes).toBe(5 * GB);
+    expect(onSubmit.mock.calls[0][0].bytes).toBe(5 * bytesPerGB);
   });
 
   it('surfaces a resolver validation error as help text and blocks submit', async () => {

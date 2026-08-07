@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 
 import { computeTrafficDisplay } from '@/lib/clients/traffic-display';
 
+import { bytesPerGB } from '@/lib/clients/units';
+
 describe('computeTrafficDisplay', () => {
-  const gb = 1024 * 1024 * 1024;
+  const gb = bytesPerGB;
 
   it('returns 50% for half-used limited quota', () => {
     const d = computeTrafficDisplay(

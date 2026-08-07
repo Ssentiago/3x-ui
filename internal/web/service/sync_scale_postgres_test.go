@@ -241,13 +241,13 @@ func TestGroupAndListPostgresScale(t *testing.T) {
 			}
 
 			start := time.Now()
-			if _, err := svc.AddToGroup(emails, "benchgroup"); err != nil {
+			if err := svc.AddToGroup(emails, "benchgroup"); err != nil {
 				t.Fatalf("AddToGroup: %v", err)
 			}
 			addDur := time.Since(start)
 
 			start = time.Now()
-			if _, err := svc.RemoveFromGroup(emails); err != nil {
+			if err := svc.RemoveFromGroup(emails); err != nil {
 				t.Fatalf("RemoveFromGroup: %v", err)
 			}
 			rmDur := time.Since(start)

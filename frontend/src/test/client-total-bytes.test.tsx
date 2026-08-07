@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
-import { resolveTotalBytes, gbToBytes } from '@/pages/clients/ClientFormModal';
+import { resolveTotalBytes } from '@/pages/clients/ClientFormModal';
+import { gbToBytes } from '@/lib/clients/units';
 
 describe('resolveTotalBytes', () => {
   it('preserves the original byte total on a no-op save of a non-GB-aligned quota', () => {

@@ -100,10 +100,10 @@ func TestAllAPIsPostgresScale(t *testing.T) {
 			run("GetRecordByEmail", func() error { _, err := svc.GetRecordByEmail(nil, emails[n/2]); return err })
 
 			run("ListGroups", func() error { _, err := svc.ListGroups(); return err })
-			run("AddToGroup(M)", func() error { _, err := svc.AddToGroup(emailsM, "g1"); return err })
+			run("AddToGroup(M)", func() error { return svc.AddToGroup(emailsM, "g1") })
 			run("EmailsByGroup", func() error { _, err := svc.EmailsByGroup("g1"); return err })
-			run("RenameGroup", func() error { _, err := svc.RenameGroup("g1", "g2"); return err })
-			run("DeleteGroup", func() error { _, err := svc.DeleteGroup("g2"); return err })
+			run("RenameGroup", func() error { return svc.RenameGroup("g1", "g2") })
+			run("DeleteGroup", func() error { return svc.DeleteGroup("g2") })
 
 			run("ResetInboundTraffic", func() error { return inboundSvc.ResetInboundTraffic(ib.Id) })
 			run("Inbound.ResetAllTraffics", func() error { return inboundSvc.ResetAllTraffics() })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SizeFormatter } from '@/utils';
+import { bytesPerGB } from '@/lib/clients/units';
 
 describe('SizeFormatter.sizeFormat', () => {
   it('formats zero and negative values', () => {
@@ -49,6 +50,6 @@ describe('SizeFormatter.speedFormat', () => {
   });
 
   it('formats gigabytes per second', () => {
-    expect(SizeFormatter.speedFormat(1024 * 1024 * 1024)).toBe('1.00 GB/s');
+    expect(SizeFormatter.speedFormat(bytesPerGB)).toBe('1.00 GB/s');
   });
 });

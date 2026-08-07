@@ -9,7 +9,8 @@ import type { ClientTraffic, ClientsSummary } from '@/schemas/client';
 // the summary card "jump" on refresh.
 type Row = ClientTraffic & { email?: string };
 
-const GB = 1024 * 1024 * 1024;
+import { bytesPerGB } from '@/lib/clients/units';
+
 const DAY = 86_400_000;
 
 function row(over: Partial<Row>): Row {
@@ -23,14 +24,14 @@ describe('computeClientsSummary', () => {
       row({ email: 'online@x', enable: true }),
       row({ email: 'offline@x', enable: true }),
       row({ email: 'disabled@x', enable: false }),
-      row({ email: 'exhausted@x', enable: true, total: 1 * GB, up: 1 * GB }),
+      row({ email: 'exhausted@x', enable: true, total: 1 * bytesPerGB, up: 1 * bytesPerGB }),
       row({ email: 'expired@x', enable: true, expiryTime: now - DAY }),
       row({ email: 'nearexpiry@x', enable: true, expiryTime: now + DAY }),
-      row({ email: 'nearlimit@x', enable: true, total: 10 * GB, up: 9.9 * GB }),
+      row({ email: 'nearlimit@x', enable: true, total: 10 * bytesPerGB, up: 9.9 * bytesPerGB }),
     ];
     const online = new Set(['online@x', 'disabled@x']); // disabled-but-online must NOT count as online
     const expireDiffMs = 3 * DAY;
-    const trafficDiffBytes = 1 * GB;
+    const trafficDiffBytes = 1 * bytesPerGB;
 
     const s = computeClientsSummary(stats, online, expireDiffMs, trafficDiffBytes);
 
@@ -46,10 +47,10 @@ describe('computeClientsSummary', () => {
     const stats: Row[] = [
       row({ email: 'online@x', enable: true }),
       row({ email: 'disabled@x', enable: false }),
-      row({ email: 'exhausted@x', enable: true, total: 1 * GB, up: 1 * GB }),
-      row({ email: 'nearlimit@x', enable: true, total: 10 * GB, up: 9.9 * GB }),
+      row({ email: 'exhausted@x', enable: true, total: 1 * bytesPerGB, up: 1 * bytesPerGB }),
+      row({ email: 'nearlimit@x', enable: true, total: 10 * bytesPerGB, up: 9.9 * bytesPerGB }),
     ];
-    const s = computeClientsSummary(stats, new Set(['online@x']), 3 * DAY, 1 * GB);
+    const s = computeClientsSummary(stats, new Set(['online@x']), 3 * DAY, 1 * bytesPerGB);
 
     // The server caps its lists but never its counters; the live recompute has
     // both, so the summary card reads the same either way.
@@ -62,7 +63,7 @@ describe('computeClientsSummary', () => {
 
   it('depleted wins over disabled and over online', () => {
     const stats: Row[] = [
-      row({ email: 'a@x', enable: false, total: 1 * GB, up: 2 * GB }),
+      row({ email: 'a@x', enable: false, total: 1 * bytesPerGB, up: 2 * bytesPerGB }),
     ];
     const s = computeClientsSummary(stats, new Set(['a@x']), 0, 0);
     expect(s.depleted).toEqual(['a@x']);
@@ -72,7 +73,7 @@ describe('computeClientsSummary', () => {
 
   it('unlimited + no expiry is active', () => {
     const stats: Row[] = [row({ email: 'a@x', enable: true, total: 0, expiryTime: 0 })];
-    const s = computeClientsSummary(stats, new Set(), 3 * DAY, 1 * GB);
+    const s = computeClientsSummary(stats, new Set(), 3 * DAY, 1 * bytesPerGB);
     expect(s.active).toBe(1);
     expect(s.expiring).toEqual([]);
     expect(s.depleted).toEqual([]);
@@ -88,19 +89,19 @@ describe('pickClientsSummary', () => {
 
   it('keeps the server summary when the snapshot is short of the server total (#6102)', () => {
     const shortSnapshot: Row[] = Array.from({ length: 58 }, (_, i) => row({ email: `c${i}@x`, enable: true }));
-    const s = pickClientsSummary(serverSummary, shortSnapshot, new Set(), 3 * DAY, 1 * GB);
+    const s = pickClientsSummary(serverSummary, shortSnapshot, new Set(), 3 * DAY, 1 * bytesPerGB);
     expect(s).toEqual(serverSummary);
   });
 
   it('uses the live recompute when the snapshot covers every client', () => {
     const fullSnapshot: Row[] = Array.from({ length: 67 }, (_, i) => row({ email: `c${i}@x`, enable: true }));
-    const s = pickClientsSummary(serverSummary, fullSnapshot, new Set(), 3 * DAY, 1 * GB);
+    const s = pickClientsSummary(serverSummary, fullSnapshot, new Set(), 3 * DAY, 1 * bytesPerGB);
     expect(s.total).toBe(67);
     expect(s.active).toBe(67);
   });
 
   it('falls back to the server summary before the first WS snapshot arrives', () => {
-    const s = pickClientsSummary(serverSummary, [], new Set(), 3 * DAY, 1 * GB);
+    const s = pickClientsSummary(serverSummary, [], new Set(), 3 * DAY, 1 * bytesPerGB);
     expect(s).toEqual(serverSummary);
   });
 });
