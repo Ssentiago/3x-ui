@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
-
-	"gorm.io/gorm"
 )
 
 // IPWithTimestamp tracks an IP address with its last seen timestamp
@@ -122,7 +122,30 @@ func (j *CheckClientIpJob) collectFromOnlineAPI() (map[string]map[string]int64, 
 func (j *CheckClientIpJob) hasLimitIp() bool {
 	db := database.GetDB()
 	var probe int64
-	err := db.Model(&model.ClientRecord{}).Where("limit_ip > 0").Limit(1).Count(&probe).Error
+	err := db.Raw(`
+		SELECT COUNT(*) FROM (
+			SELECT 1 FROM clients
+			WHERE limit_ip > 0 OR EXISTS (
+				SELECT 1 FROM client_tariffs ct
+				WHERE ct.client_id = clients.id AND ct.ended_at IS NULL AND ct.limit_ip_override IS NOT NULL
+			)
+			LIMIT 1
+		)`).Count(&probe).Error
+	if err == nil && probe > 0 {
+		return true
+	}
+	err = db.Raw(`
+		SELECT COUNT(*) FROM (
+			SELECT 1 FROM clients c
+			JOIN client_groups g ON g.name = c.group_name AND g.tariff_id IS NOT NULL
+			JOIN tariff_profiles tp ON tp.tariff_id = g.tariff_id
+			JOIN profiles p ON p.id = tp.profile_id AND p.limit_ip IS NOT NULL
+			WHERE NOT EXISTS (
+				SELECT 1 FROM client_tariffs ct
+				WHERE ct.client_id = c.id AND ct.ended_at IS NULL AND ct.limit_ip_override IS NOT NULL
+			)
+			LIMIT 1
+		)`).Count(&probe).Error
 	return err == nil && probe > 0
 }
 
@@ -139,29 +162,98 @@ func chunkEmails(s []string, size int) [][]string {
 	return append(chunks, s)
 }
 
-// loadClientLimits maps each observed email to its clients.limit_ip in a few
-// chunked queries, replacing the per-email settings-JSON parse that previously
-// resolved the limit.
+// loadClientLimits maps each observed email to its effective limit_ip.
+// Priority: limit_ip_override > tariff-resolved (profile chain) > client.limit_ip.
 func (j *CheckClientIpJob) loadClientLimits(emails []string) map[string]int {
 	db := database.GetDB()
 	out := make(map[string]int, len(emails))
 	for _, batch := range chunkEmails(emails, ipScanChunk) {
 		var rows []struct {
-			Email   string
-			LimitIp int
+			Email           string
+			LimitIp         int
+			LimitIpOverride *int
+			TariffId        *int
 		}
-		if err := db.Model(&model.ClientRecord{}).
-			Select("email, limit_ip").
-			Where("email IN ?", batch).
-			Scan(&rows).Error; err != nil {
+		if err := db.Raw(`
+			SELECT c.email, c.limit_ip, ct.limit_ip_override, g.tariff_id
+			FROM clients c
+			LEFT JOIN client_tariffs ct ON ct.client_id = c.id AND ct.ended_at IS NULL
+			LEFT JOIN client_groups g ON g.name = c.group_name
+			WHERE c.email IN ?
+		`, batch).Scan(&rows).Error; err != nil {
 			j.checkError(err)
 			continue
 		}
+
+		tariffLimits := resolveTariffLimitIPs(rows, db)
+
 		for _, r := range rows {
-			out[r.Email] = r.LimitIp
+			tariffLimit := tariffLimits[ptrToInt(r.TariffId)]
+			var effective int
+			if r.LimitIpOverride != nil {
+				effective = *r.LimitIpOverride
+			} else if tariffLimit > 0 {
+				effective = tariffLimit
+			} else {
+				effective = r.LimitIp
+			}
+			out[r.Email] = effective
 		}
 	}
 	return out
+}
+
+func ptrToInt(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+// resolveTariffLimitIPs resolves the effective limit_ip for each unique tariff
+// id found in the client batch by walking the tariff's ordered profile chain.
+// Returns a map from tariff_id to resolved limit_ip.
+func resolveTariffLimitIPs(rows []struct {
+	Email           string
+	LimitIp         int
+	LimitIpOverride *int
+	TariffId        *int
+}, db *gorm.DB,
+) map[int]int {
+	tariffIds := make(map[int]struct{})
+	for _, r := range rows {
+		if r.TariffId != nil {
+			tariffIds[*r.TariffId] = struct{}{}
+		}
+	}
+	if len(tariffIds) == 0 {
+		return nil
+	}
+
+	type tariffProfile struct {
+		TariffId int
+		LimitIP  *int
+		Position int
+	}
+	var links []tariffProfile
+	idList := make([]int, 0, len(tariffIds))
+	for id := range tariffIds {
+		idList = append(idList, id)
+	}
+	db.Table("tariff_profiles").
+		Select("tariff_profiles.tariff_id, profiles.limit_ip, tariff_profiles.position").
+		Joins("JOIN profiles ON profiles.id = tariff_profiles.profile_id").
+		Where("tariff_profiles.tariff_id IN ?", idList).
+		Order("tariff_profiles.position ASC").
+		Scan(&links)
+
+	resolved := make(map[int]int, len(tariffIds))
+	for _, tp := range links {
+		if tp.LimitIP != nil {
+			resolved[tp.TariffId] = *tp.LimitIP
+		}
+	}
+	return resolved
 }
 
 // loadInboundsByEmails resolves each email's owning inbound through the

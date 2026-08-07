@@ -506,6 +506,9 @@ func (s *SubService) statsForClient(inbound *model.Inbound, client model.Client)
 // needed when a global remark template references client-only tokens. Falls back
 // to an email-only client if not found.
 func (s *SubService) lookupClient(inbound *model.Inbound, email string) model.Client {
+	if c, ok := s.resolvedByEmail[email]; ok {
+		return c
+	}
 	if c, ok := s.clientForLink(inbound, email); ok {
 		return c
 	}
@@ -643,6 +646,10 @@ func (s *SubService) genTemplatedRemark(inbound *model.Inbound, client model.Cli
 		hostRemark: hostRemark,
 		transport:  transport,
 		security:   inboundSecurity(inbound),
+	}
+	if _, resolved := s.resolvedByEmail[client.Email]; resolved {
+		ctx.stats.ExpiryTime = client.ExpiryTime
+		ctx.stats.Total = client.TotalGB
 	}
 	var tmpl string
 	if s.subscriptionBody {

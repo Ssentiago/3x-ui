@@ -66,6 +66,10 @@ type SubService struct {
 	// with the clients array left out; generators read only inbound-level
 	// fields (encryption, method, version, …) from it.
 	settingsByInbound map[int]map[string]any
+	// resolvedByEmail maps email → tariff-resolved client, populated from
+	// matchingClients (ListForInbound) during link generation so remark
+	// template tokens see resolved totalGB and expiryTime.
+	resolvedByEmail map[string]model.Client
 }
 
 // NewSubService creates a new subscription service with the given configuration.
@@ -101,6 +105,7 @@ func (s *SubService) PrepareForRequest(host string) {
 	s.clientsByInbound = map[int]map[string]model.Client{}
 	s.fullyPrimedInbounds = map[int]bool{}
 	s.settingsByInbound = map[int]map[string]any{}
+	s.resolvedByEmail = map[string]model.Client{}
 	s.loadNodes()
 	s.loadRemarkSettings()
 }
@@ -308,6 +313,7 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 		// address/TLS wins over the projected master stream.
 		hostEps := s.hostEndpoints(inbound, "raw")
 		for _, client := range clients {
+			s.resolvedByEmail[client.Email] = client
 			if client.Enable {
 				hasEnabledClient = true
 			}
@@ -360,6 +366,7 @@ func (s *SubService) inboundLinks(inbound *model.Inbound) []string {
 	var out []string
 	seen := make(map[string]struct{}, len(clients))
 	for _, client := range clients {
+		s.resolvedByEmail[client.Email] = client
 		key := strings.ToLower(client.Email)
 		if _, dup := seen[key]; dup {
 			continue
@@ -408,8 +415,9 @@ func (s *SubService) AggregateTrafficByEmails(emails []string) (xray.ClientTraff
 	if err := db.Model(&model.ClientRecord{}).Where("email IN ?", emails).Find(&records).Error; err != nil {
 		logger.Warning("SubService - AggregateTrafficByEmails: load client limits:", err)
 	} else {
-		for _, r := range records {
-			limits[r.Email] = [2]int64{r.TotalGB, r.ExpiryTime}
+		for i := range records {
+			f := service.ResolveClientLimits(nil, &records[i])
+			limits[records[i].Email] = [2]int64{f.TotalGB, f.ExpiryTime}
 		}
 	}
 
@@ -421,12 +429,8 @@ func (s *SubService) AggregateTrafficByEmails(emails []string) (xray.ClientTraff
 		}
 		total, expiry := ct.Total, ct.ExpiryTime
 		if lim, ok := limits[ct.Email]; ok {
-			if total == 0 {
-				total = lim[0]
-			}
-			if expiry == 0 {
-				expiry = lim[1]
-			}
+			total = lim[0]
+			expiry = lim[1]
 		}
 		if first {
 			agg.Up = ct.Up
@@ -463,16 +467,26 @@ func subscriptionExpiryFromClient(nowMs, expiryTime int64) int64 {
 
 func (s *SubService) getInboundsBySubId(subId string) ([]*model.Inbound, error) {
 	db := database.GetDB()
+	var records []model.ClientRecord
+	if err := db.Where("sub_id = ?", subId).Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	seen := service.BatchResolveEffectiveInboundIds(db, records)
+	if len(seen) == 0 {
+		s.indexStatsBySubId(subId)
+		return nil, nil
+	}
+	ids := make([]int, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
 	var inbounds []*model.Inbound
-	err := db.Model(model.Inbound{}).Where(`id in (
-		SELECT DISTINCT inbounds.id
-		FROM inbounds
-		JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id
-		JOIN clients ON clients.id = client_inbounds.client_id
-		WHERE
-			inbounds.protocol in ('vmess','vless','trojan','shadowsocks','hysteria','wireguard','mtproto')
-			AND clients.sub_id = ? AND inbounds.enable = ?
-	)`, subId, true).Order("sub_sort_index ASC").Order("id ASC").Find(&inbounds).Error
+	err := db.Model(model.Inbound{}).
+		Where("id IN ? AND enable = ? AND protocol IN ?", ids, true,
+			[]string{"vmess", "vless", "trojan", "shadowsocks", "hysteria", "wireguard", "mtproto"}).
+		Order("sub_sort_index ASC").Order("id ASC").
+		Find(&inbounds).Error
 	if err != nil {
 		return nil, err
 	}

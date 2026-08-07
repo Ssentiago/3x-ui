@@ -50,6 +50,7 @@ func (s *SubClashService) GetClash(subId string, host string) (string, string, e
 			injectExternalProxy(inbound, hostEps)
 		}
 		for _, client := range clients {
+			subReq.resolvedByEmail[client.Email] = client
 			seenEmails[client.Email] = struct{}{}
 			proxies = append(proxies, s.getProxies(subReq, inbound, client, host)...)
 		}

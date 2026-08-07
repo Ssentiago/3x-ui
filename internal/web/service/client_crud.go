@@ -15,6 +15,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/random"
+	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 
 	"gorm.io/gorm"
@@ -393,6 +394,31 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		}
 	}
 
+	// Mode flags from the frontend.
+	// "tariff"   → field is tariff-controlled, keep existing raw DB value.
+	// "override" → user explicitly overrode, write to active CT row.
+	// "own"      → no tariff group, normal write.
+	active := getActiveClientTariff(database.GetDB(), id)
+	if updated.TotalGBMode == model.FieldModeTariff && (active == nil || active.TotalGBOverride == nil) {
+		updated.TotalGB = existing.TotalGB
+	}
+	if updated.LimitIPMode == model.FieldModeTariff && (active == nil || active.LimitIPOverride == nil) {
+		updated.LimitIP = existing.LimitIP
+	}
+	if updated.ExpiryTimeMode == model.FieldModeTariff && (active == nil || active.ExpiryTimeOverride == nil) {
+		updated.ExpiryTime = existing.ExpiryTime
+	}
+	db := database.GetDB()
+	if updated.TotalGBMode == model.FieldModeOverride && active != nil {
+		db.Model(&model.ClientTariff{}).Where("id = ?", active.ID).Update("total_gb_override", updated.TotalGB)
+	}
+	if updated.LimitIPMode == model.FieldModeOverride && active != nil {
+		db.Model(&model.ClientTariff{}).Where("id = ?", active.ID).Update("limit_ip_override", updated.LimitIP)
+	}
+	if updated.ExpiryTimeMode == model.FieldModeOverride && active != nil {
+		db.Model(&model.ClientTariff{}).Where("id = ?", active.ID).Update("expiry_time_override", updated.ExpiryTime)
+	}
+
 	needRestart := false
 	for _, ibId := range inboundIds {
 		inbound, getErr := inboundSvc.GetInbound(ibId)
@@ -486,10 +512,38 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 	// That guard also meant clearing the group in the client editor never took
 	// effect. The editor always round-trips the field, so apply it here,
 	// including the empty string that removes the client from its group.
+	if updated.Group != existing.Group {
+		if updated.Group != "" {
+			var grp model.ClientGroup
+			if err := database.GetDB().Where("name = ?", updated.Group).First(&grp).Error; err == nil && grp.TariffID != nil {
+				activateClientTariff(nil, id, *grp.TariffID)
+			}
+		}
+	}
 	if err := database.GetDB().Model(&model.ClientRecord{}).
 		Where("id = ?", id).
 		UpdateColumn("group_name", updated.Group).Error; err != nil {
 		return needRestart, err
+	}
+
+	// Live-apply tariff inbound list when client moves to a tariff group.
+	if updated.Group != existing.Group && updated.Group != "" {
+		var grp model.ClientGroup
+		if dbErr := database.GetDB().Where("name = ?", updated.Group).First(&grp).Error; dbErr == nil && grp.TariffID != nil {
+			rec := *existing
+			rec.Group = updated.Group
+			resolved := ResolveClientFields(nil, nil, &rec)
+			if len(resolved.InboundIds) > 0 {
+				var cts ClientTariffService
+				nr, applyErr := cts.ApplyInboundList(&rec, resolved.InboundIds, inboundSvc)
+				if applyErr != nil {
+					logger.Warningf("Failed to live-apply tariff inbounds for %s: %v", rec.Email, applyErr)
+				}
+				if nr {
+					needRestart = true
+				}
+			}
+		}
 	}
 
 	// Same shape as the group write above: SyncInbound keeps a stored ad-tag

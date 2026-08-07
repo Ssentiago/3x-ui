@@ -856,6 +856,14 @@ type ClientReverse struct {
 }
 
 // Client represents a client configuration for Xray inbounds with traffic limits and settings.
+type FieldMode string
+
+const (
+	FieldModeTariff   FieldMode = "tariff"
+	FieldModeOverride FieldMode = "override"
+	FieldModeOwn      FieldMode = "own"
+)
+
 type Client struct {
 	ID           string         `json:"id,omitempty"`       // Unique client identifier
 	Security     string         `json:"security"`           // Security method (e.g., "auto", "aes-128-gcm")
@@ -872,8 +880,11 @@ type Client struct {
 	AdTag        string         `json:"adTag,omitempty" example:"0123456789abcdef0123456789abcdef"`
 	Email        string         `json:"email"`                        // Client email identifier
 	LimitIP      int            `json:"limitIp"`                      // IP limit for this client
-	TotalGB      int64          `json:"totalGB" form:"totalGB"`       // Total traffic limit in GB
-	ExpiryTime   int64          `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
+	LimitIPMode  FieldMode      `json:"limitIpMode"`
+	TotalGB      int64          `json:"totalGB" form:"totalGB"`
+	TotalGBMode  FieldMode      `json:"totalGBMode"`
+	ExpiryTime   int64          `json:"expiryTime" form:"expiryTime"`
+	ExpiryTimeMode FieldMode    `json:"expiryTimeMode"`
 	Enable       bool           `json:"enable" form:"enable"`         // Whether the client is enabled
 	TgID         int64          `json:"tgId" form:"tgId"`             // Telegram user ID for notifications
 	SubID        string         `json:"subId" form:"subId"`           // Subscription identifier
@@ -885,35 +896,35 @@ type Client struct {
 }
 
 type ClientRecord struct {
-	Id           int    `json:"id" gorm:"primaryKey;autoIncrement"`
-	Email        string `json:"email" gorm:"uniqueIndex;not null"`
-	SubID        string `json:"subId" gorm:"index;column:sub_id"`
-	UUID         string `json:"uuid" gorm:"column:uuid"`
-	Password     string `json:"password"`
-	Auth         string `json:"auth"`
-	Flow         string `json:"flow"`
-	Security     string `json:"security"`
-	Reverse      string `json:"reverse" gorm:"column:reverse"`
-	PrivateKey   string `json:"privateKey" gorm:"column:wg_private_key"`
-	PublicKey    string `json:"publicKey" gorm:"column:wg_public_key"`
-	AllowedIPs   string `json:"allowedIPs" gorm:"column:wg_allowed_ips"`
-	PreSharedKey string `json:"preSharedKey" gorm:"column:wg_pre_shared_key"`
-	KeepAlive    int    `json:"keepAlive" gorm:"column:wg_keep_alive;default:0"`
-	Secret       string `json:"secret" gorm:"column:secret"`
-	AdTag        string `json:"adTag" gorm:"column:ad_tag;default:''"`
-	LimitIP      int    `json:"limitIp" gorm:"column:limit_ip"`
-	TotalGB      int64  `json:"totalGB" gorm:"column:total_gb"`
-	ExpiryTime   int64  `json:"expiryTime" gorm:"column:expiry_time"`
-	Enable       bool   `json:"enable" gorm:"default:true"`
-	TgID         int64  `json:"tgId" gorm:"column:tg_id;index:idx_clients_tg_id"`
-	Group        string `json:"group" gorm:"column:group_name;default:'';index:idx_client_record_group"`
-	Comment      string `json:"comment"`
-	Reset        int    `json:"reset" gorm:"default:0"`
-	CreatedAt    int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
-	UpdatedAt    int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
+	Id                 int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	Email              string `json:"email" gorm:"uniqueIndex;not null"`
+	SubID              string `json:"subId" gorm:"index;column:sub_id"`
+	UUID               string `json:"uuid" gorm:"column:uuid"`
+	Password           string `json:"password"`
+	Auth               string `json:"auth"`
+	Flow               string `json:"flow"`
+	Security           string `json:"security"`
+	Reverse            string `json:"reverse" gorm:"column:reverse"`
+	PrivateKey         string `json:"privateKey" gorm:"column:wg_private_key"`
+	PublicKey          string `json:"publicKey" gorm:"column:wg_public_key"`
+	AllowedIPs         string `json:"allowedIPs" gorm:"column:wg_allowed_ips"`
+	PreSharedKey       string `json:"preSharedKey" gorm:"column:wg_pre_shared_key"`
+	KeepAlive          int    `json:"keepAlive" gorm:"column:wg_keep_alive;default:0"`
+	Secret             string `json:"secret" gorm:"column:secret"`
+	AdTag              string `json:"adTag" gorm:"column:ad_tag;default:''"`
+	LimitIP            int    `json:"limitIp" gorm:"column:limit_ip"`
+	TotalGB            int64  `json:"totalGB" gorm:"column:total_gb"`
+	ExpiryTime         int64  `json:"expiryTime" gorm:"column:expiry_time"`
+	Enable             bool   `json:"enable" gorm:"default:true"`
+	TgID               int64  `json:"tgId" gorm:"column:tg_id;index:idx_clients_tg_id"`
+	Group              string `json:"group" gorm:"column:group_name;default:'';index:idx_client_record_group"`
+	Comment            string `json:"comment"`
+	Reset              int    `json:"reset" gorm:"default:0"`
 	// Owned solely by the node-snapshot sweep, which soft-orphans instead of
 	// deleting; orphans from any other cause stay at zero and are never reaped.
 	SyncOrphanedAt int64 `json:"-" gorm:"column:sync_orphaned_at;default:0"`
+	CreatedAt      int64 `json:"createdAt" gorm:"autoCreateTime:milli"`
+	UpdatedAt      int64 `json:"updatedAt" gorm:"autoUpdateTime:milli"`
 }
 
 func (ClientRecord) TableName() string { return "clients" }
@@ -921,6 +932,7 @@ func (ClientRecord) TableName() string { return "clients" }
 type ClientGroup struct {
 	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name      string `json:"name" gorm:"uniqueIndex;not null"`
+	TariffID  *int   `json:"tariffId" gorm:"column:tariff_id"`
 	ResetUp   int64  `json:"resetUp" gorm:"column:reset_up;default:0"`
 	ResetDown int64  `json:"resetDown" gorm:"column:reset_down;default:0"`
 	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
@@ -928,6 +940,18 @@ type ClientGroup struct {
 }
 
 func (ClientGroup) TableName() string { return "client_groups" }
+
+type Tariff struct {
+	Id              int    `json:"id" gorm:"primaryKey;autoIncrement" example:"1"`
+	Name            string `json:"name" gorm:"uniqueIndex;not null" example:"Gold"`
+	TrafficStrategy string `json:"trafficStrategy" gorm:"column:traffic_strategy;not null;default:overwrite" example:"sum"`
+	InboundStrategy string `json:"inboundStrategy" gorm:"column:inbound_strategy;not null;default:overwrite" example:"union"`
+	Enable          bool   `json:"enable" gorm:"default:true" example:"true"`
+	CreatedAt       int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+	UpdatedAt       int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
+}
+
+func (Tariff) TableName() string { return "tariffs" }
 
 // MarshalJSON emits the reverse column as a nested JSON object rather than an
 // escaped JSON-text string, matching the same convention Inbound uses for its
@@ -1113,6 +1137,14 @@ func splitWireguardAllowedIPs(csv string) []string {
 }
 
 func (r *ClientRecord) ToClient() *Client {
+	return r.toClient(r.LimitIP, r.TotalGB, r.ExpiryTime)
+}
+
+func (r *ClientRecord) ToClientEffective(effectiveLimitIP int, effectiveTotalGB int64, effectiveExpiryTime int64) *Client {
+	return r.toClient(effectiveLimitIP, effectiveTotalGB, effectiveExpiryTime)
+}
+
+func (r *ClientRecord) toClient(limitIP int, totalGB int64, expiryTime int64) *Client {
 	c := &Client{
 		ID:         r.UUID,
 		Email:      r.Email,
@@ -1121,9 +1153,9 @@ func (r *ClientRecord) ToClient() *Client {
 		Auth:       r.Auth,
 		Flow:       r.Flow,
 		Security:   r.Security,
-		LimitIP:    r.LimitIP,
-		TotalGB:    r.TotalGB,
-		ExpiryTime: r.ExpiryTime,
+		LimitIP:    limitIP,
+		TotalGB:    totalGB,
+		ExpiryTime: expiryTime,
 		Enable:     r.Enable,
 		TgID:       r.TgID,
 		Group:      r.Group,
@@ -1336,4 +1368,60 @@ func MergeClientRecord(existing *ClientRecord, incoming *ClientRecord) []ClientM
 		existing.UpdatedAt = incoming.UpdatedAt
 	}
 	return conflicts
+}
+
+// ClientTariff records when a client entered and exited a tariff.
+// Active entry: ended_at IS NULL. History: all rows where ended_at IS NOT NULL.
+type ClientTariff struct {
+	ID                    int64  `json:"id" gorm:"primaryKey;autoIncrement"`
+	ClientID              int    `json:"clientId" gorm:"column:client_id;index;not null"`
+	TariffID              int    `json:"tariffId" gorm:"column:tariff_id;not null"`
+	StartedAt             int64  `json:"startedAt" gorm:"column:started_at;not null"`
+	EndedAt               *int64 `json:"endedAt" gorm:"column:ended_at"`
+	TotalGBOverride       *int64 `json:"totalGBOverride" gorm:"column:total_gb_override"`
+	LimitIPOverride       *int   `json:"limitIPOverride" gorm:"column:limit_ip_override"`
+	ExpiryTimeOverride    *int64 `json:"expiryTimeOverride" gorm:"column:expiry_time_override"`
+	IsInboundsOverridden  bool   `json:"isInboundsOverridden" gorm:"column:is_inbounds_overridden;default:false"`
+}
+
+func (ClientTariff) TableName() string { return "client_tariffs" }
+
+const (
+	StrategyOverwrite = "overwrite"
+	StrategySum       = "sum"
+	StrategyUnion     = "union"
+)
+
+type Profile struct {
+	Id         int    `json:"id" gorm:"primaryKey;autoIncrement" example:"1"`
+	Name       string `json:"name" gorm:"uniqueIndex;not null" example:"BASE"`
+	Traffic    *int64 `json:"traffic" gorm:"column:traffic" example:"100"`
+	ExpiryDays *int   `json:"expiryDays" gorm:"column:expiry_days" example:"30"`
+	LimitIP    *int   `json:"limitIp" gorm:"column:limit_ip" example:"3"`
+	InboundIds string `json:"inboundIds" gorm:"column:inbound_ids;default:null" example:"[1,2]"`
+	CreatedAt  int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+	UpdatedAt  int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
+}
+
+func (Profile) TableName() string { return "profiles" }
+
+type TariffProfile struct {
+	TariffID  int `json:"tariffId" gorm:"primaryKey;column:tariff_id"`
+	ProfileID int `json:"profileId" gorm:"primaryKey;column:profile_id"`
+	Position  int `json:"position" gorm:"uniqueIndex:idx_tariff_position;column:position;not null;default:0"`
+}
+
+func (TariffProfile) TableName() string { return "tariff_profiles" }
+
+type TariffProfileItem struct {
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	Position int    `json:"position"`
+}
+
+type ResolvedFields struct {
+	Traffic    int64 `json:"traffic,omitempty"`
+	ExpiryDays int   `json:"expiryDays,omitempty"`
+	LimitIP    int   `json:"limitIp,omitempty"`
+	InboundIds []int `json:"inboundIds,omitempty"`
 }

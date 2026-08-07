@@ -39,6 +39,11 @@ func run(root, outDir string) error {
 				"ClientInbound",
 				"InboundFallback",
 				"Host",
+				"Tariff",
+				"Profile",
+				"TariffProfile",
+				"TariffProfileItem",
+				"ResolvedFields",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
@@ -82,6 +87,7 @@ func run(root, outDir string) error {
 				"NodeView",
 				"ProbeResultUI",
 				"RealityScanResult",
+				"TariffSummary",
 			),
 		},
 		{

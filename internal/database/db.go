@@ -77,6 +77,10 @@ func allModels() []any {
 		&model.ClientInbound{},
 		&model.ClientExternalLink{},
 		&model.ClientGroup{},
+		&model.Tariff{},
+		&model.Profile{},
+		&model.TariffProfile{},
+		&model.ClientTariff{},
 		&model.InboundFallback{},
 		&model.Host{},
 		&model.NodeClientTraffic{},
@@ -141,6 +145,9 @@ func initModels() error {
 		return err
 	}
 	if err := migrateSyncOrphanColumns(); err != nil {
+		return err
+	}
+	if err := migrateClientTariffsActiveUnique(); err != nil {
 		return err
 	}
 	if IsPostgres() {
@@ -914,6 +921,16 @@ func migrateTgIDIndex() error {
 		return nil
 	}
 	return db.Migrator().CreateIndex(&model.ClientRecord{}, "TgID")
+}
+
+// migrateClientTariffsActiveUnique ensures at most one active (ended_at IS NULL)
+// client_tariffs row per client. Both SQLite ≥3.8.0 and PostgreSQL support
+// partial unique indexes.
+func migrateClientTariffsActiveUnique() error {
+	if db.Migrator().HasIndex(&model.ClientTariff{}, "idx_client_tariffs_active") {
+		return nil
+	}
+	return db.Exec("CREATE UNIQUE INDEX idx_client_tariffs_active ON client_tariffs (client_id) WHERE ended_at IS NULL").Error
 }
 
 // normalizeInboundSubSortIndex lifts sub_sort_index values below the 1-based

@@ -152,6 +152,7 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 		}
 	}
 
+	// Load raw client_inbounds attachments.
 	attachments := make(map[int][]int, len(rows))
 	for _, batch := range chunkInts(clientIds, sqlInChunk) {
 		var links []model.ClientInbound
@@ -160,6 +161,47 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 		}
 		for _, l := range links {
 			attachments[l.ClientId] = append(attachments[l.ClientId], l.InboundId)
+		}
+	}
+
+	// Batch-resolve tariff inbounds: collect unique group names among clients,
+	// load their group records, resolve each tariff's inbound chain once.
+	activeCT := GetActiveClientTariffMap(db, clientIds)
+	groupNames := make(map[string]struct{})
+	for i := range rows {
+		active := activeCT[rows[i].Id]
+		if rows[i].Group != "" && (active == nil || !active.IsInboundsOverridden) {
+			groupNames[rows[i].Group] = struct{}{}
+		}
+	}
+
+	groupTariffResolved := make(map[string]TariffResolved)
+	if len(groupNames) > 0 {
+		names := make([]string, 0, len(groupNames))
+		for n := range groupNames {
+			names = append(names, n)
+		}
+		var groups []model.ClientGroup
+		if err := db.Where("name IN ? AND tariff_id IS NOT NULL", names).Find(&groups).Error; err != nil {
+			return nil, err
+		}
+		groupTariffResolved = ResolveTariffInboundMap(db, groups)
+	}
+
+	// Resolve effective inbounds per client: merge own + tariff inbounds.
+	effectiveInbounds := make(map[int][]int, len(rows))
+	for i := range rows {
+		own := attachments[rows[i].Id]
+		tr, hasTariff := groupTariffResolved[rows[i].Group]
+		overridden := activeCT[rows[i].Id] != nil && activeCT[rows[i].Id].IsInboundsOverridden
+		if overridden || !hasTariff || len(tr.InboundIds) == 0 {
+			effectiveInbounds[rows[i].Id] = own
+			continue
+		}
+		if tr.IsUnion {
+			effectiveInbounds[rows[i].Id] = MergeInboundIds(own, tr.InboundIds)
+		} else {
+			effectiveInbounds[rows[i].Id] = tr.InboundIds
 		}
 	}
 
@@ -183,7 +225,7 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 	for i := range rows {
 		out = append(out, ClientWithAttachments{
 			ClientRecord: rows[i],
-			InboundIds:   attachments[rows[i].Id],
+			InboundIds:   effectiveInbounds[rows[i].Id],
 			Traffic:      trafficByEmail[rows[i].Email],
 		})
 	}

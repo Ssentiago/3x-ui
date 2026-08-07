@@ -9,15 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// applyClientRecordMerge merges incoming client-record fields onto row using the
-// same rules everywhere a client record is persisted: scalar quota / lifecycle /
-// subscription fields are applied unconditionally (so clearing them takes
-// effect), while credentials and identifiers are only overwritten when the
-// incoming value is non-empty (so a partial update preserves the stored UUID /
-// password / keys). CreatedAt keeps the earliest known value. Email, UpdatedAt,
-// and the Id primary key are intentionally not touched here — callers handle
-// those separately. Shared by SyncInbound (per-inbound persistence) and Update
-// (the no-attached-inbound fallback) so the two paths cannot diverge.
 func applyClientRecordMerge(row *model.ClientRecord, incoming *model.ClientRecord) {
 	if incoming.UUID != "" {
 		row.UUID = incoming.UUID
@@ -105,6 +96,40 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 		}
 	}
 
+	// Load which groups have tariffs — used below to decide whether a field
+	// should be protected from inbound settings JSON writes.
+	groupHasTariff := make(map[string]bool)
+	activeCT := make(map[int]*model.ClientTariff)
+	{
+		uniq := make(map[string]struct{})
+		for _, r := range existing {
+			if r.Group == "" {
+				continue
+			}
+			uniq[r.Group] = struct{}{}
+		}
+		if len(uniq) > 0 {
+			names := make([]string, 0, len(uniq))
+			for n := range uniq {
+				names = append(names, n)
+			}
+			var grps []model.ClientGroup
+			if err := tx.Where("name IN ? AND tariff_id IS NOT NULL", names).Find(&grps).Error; err != nil {
+				return err
+			}
+			for _, g := range grps {
+				groupHasTariff[g.Name] = true
+			}
+		}
+	}
+	{
+		ids := make([]int, 0, len(existing))
+		for _, r := range existing {
+			ids = append(ids, r.Id)
+		}
+		activeCT = GetActiveClientTariffMap(tx, ids)
+	}
+
 	idByEmail := make(map[string]int, len(emails))
 	pending := make(map[string]*model.ClientRecord, len(emails))
 	toCreate := make([]*model.ClientRecord, 0, len(emails))
@@ -129,6 +154,21 @@ func (s *ClientService) SyncInbound(tx *gorm.DB, inboundId int, clients []model.
 
 		before := *row
 		applyClientRecordMerge(row, incoming)
+		if groupHasTariff[row.Group] {
+			act := activeCT[row.Id]
+			gbOverridden := act != nil && act.TotalGBOverride != nil
+			ipOverridden := act != nil && act.LimitIPOverride != nil
+			expOverridden := act != nil && act.ExpiryTimeOverride != nil
+			if !gbOverridden {
+				row.TotalGB = before.TotalGB
+			}
+			if !ipOverridden {
+				row.LimitIP = before.LimitIP
+			}
+			if !expOverridden {
+				row.ExpiryTime = before.ExpiryTime
+			}
+		}
 		preservedUpdatedAt := max(incoming.UpdatedAt, row.UpdatedAt)
 		row.UpdatedAt = preservedUpdatedAt
 
@@ -193,6 +233,14 @@ func (s *ClientService) DetachInbound(tx *gorm.DB, inboundId int) error {
 }
 
 func (s *ClientService) ListForInbound(tx *gorm.DB, inboundId int) ([]model.Client, error) {
+	return s.listForInboundFiltered(tx, inboundId, "")
+}
+
+func (s *ClientService) ListForInboundBySubId(tx *gorm.DB, inboundId int, subId string) ([]model.Client, error) {
+	return s.listForInboundFiltered(tx, inboundId, subId)
+}
+
+func (s *ClientService) listForInboundFiltered(tx *gorm.DB, inboundId int, subId string) ([]model.Client, error) {
 	if tx == nil {
 		tx = database.GetDB()
 	}
@@ -200,53 +248,137 @@ func (s *ClientService) ListForInbound(tx *gorm.DB, inboundId int) ([]model.Clie
 		model.ClientRecord
 		FlowOverride string
 	}
-	var rows []joinedRow
-	err := tx.Table("clients").
+	hasSub := subId != ""
+
+	// Direct clients: own inbounds + union-strategy tariff clients (keep
+	// direct attachments). Clients of deleted tariffs fall back to ownIds.
+	var direct []joinedRow
+	q1 := tx.Table("clients").
 		Select("clients.*, client_inbounds.flow_override AS flow_override").
 		Joins("JOIN client_inbounds ON client_inbounds.client_id = clients.id").
 		Where("client_inbounds.inbound_id = ?", inboundId).
-		Order("clients.id ASC").
-		Find(&rows).Error
-	if err != nil {
+		Where(`(
+			EXISTS (SELECT 1 FROM client_tariffs ct_ov WHERE ct_ov.client_id = clients.id AND ct_ov.ended_at IS NULL AND ct_ov.is_inbounds_overridden = TRUE)
+			OR clients.group_name = ''
+			OR NOT EXISTS (
+				SELECT 1 FROM client_groups cg
+				JOIN tariffs t ON t.id = cg.tariff_id
+				WHERE cg.name = clients.group_name
+			)
+			OR EXISTS (
+				SELECT 1 FROM client_groups cg
+				JOIN tariffs t ON t.id = cg.tariff_id
+				WHERE cg.name = clients.group_name
+				AND t.inbound_strategy = 'union'
+			)
+		)`)
+	if hasSub {
+		q1 = q1.Where("clients.sub_id = ?", subId)
+	}
+	if err := q1.Order("clients.id ASC").Find(&direct).Error; err != nil {
 		return nil, err
 	}
 
-	out := make([]model.Client, 0, len(rows))
-	for i := range rows {
-		c := rows[i].ToClient()
-		c.Flow = rows[i].FlowOverride
+	// Step 2: Tariff-resolved clients.
+	tariffIds := s.tariffIdsContainingInbound(tx, inboundId)
+	var tariff []joinedRow
+	if len(tariffIds) > 0 {
+		var groupNames []string
+		if err := tx.Model(&model.ClientGroup{}).
+			Where("tariff_id IN ?", tariffIds).
+			Pluck("name", &groupNames).Error; err != nil {
+			return nil, err
+		}
+		if len(groupNames) > 0 {
+			q2 := tx.Table("clients").
+				Select("clients.*, client_inbounds.flow_override AS flow_override").
+				Joins("LEFT JOIN client_inbounds ON client_inbounds.client_id = clients.id AND client_inbounds.inbound_id = ?", inboundId).
+				Where("clients.group_name IN ? AND NOT EXISTS (SELECT 1 FROM client_tariffs ct_ov2 WHERE ct_ov2.client_id = clients.id AND ct_ov2.ended_at IS NULL AND ct_ov2.is_inbounds_overridden = TRUE)", groupNames)
+			if hasSub {
+				q2 = q2.Where("clients.sub_id = ?", subId)
+			}
+			if err := q2.Order("clients.id ASC").Find(&tariff).Error; err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	all := make([]joinedRow, 0, len(direct)+len(tariff))
+	all = append(all, direct...)
+	all = append(all, tariff...)
+
+	seen := make(map[string]bool, len(all))
+	var unique []joinedRow
+	for _, r := range all {
+		if !seen[r.Email] {
+			seen[r.Email] = true
+			unique = append(unique, r)
+		}
+	}
+
+	out := make([]model.Client, 0, len(unique))
+	for i := range unique {
+		rec := &unique[i].ClientRecord
+		f := ResolveClientLimits(nil, rec)
+		c := rec.ToClientEffective(f.LimitIP, f.TotalGB, f.ExpiryTime)
+		c.Flow = unique[i].FlowOverride
 		out = append(out, *c)
 	}
 	return out, nil
 }
 
-// ListForInboundBySubId is ListForInbound narrowed to one subscription id —
-// both filter columns are indexed, so the subscription server resolves a
-// subscriber's clients without touching the inbound's settings JSON.
-func (s *ClientService) ListForInboundBySubId(tx *gorm.DB, inboundId int, subId string) ([]model.Client, error) {
-	if tx == nil {
-		tx = database.GetDB()
+// tariffIdsContainingInbound returns the IDs of tariffs whose resolved inbound
+// chain includes the given inboundId.
+func (s *ClientService) tariffIdsContainingInbound(tx *gorm.DB, inboundId int) []int {
+	var rows []struct {
+		TariffID int
 	}
-	type joinedRow struct {
-		model.ClientRecord
-		FlowOverride string
+	tx.Table("tariff_profiles tp").
+		Select("DISTINCT tp.tariff_id").
+		Joins("JOIN profiles p ON p.id = tp.profile_id").
+		Where("p.inbound_ids IS NOT NULL AND p.inbound_ids != '' AND p.inbound_ids != 'null'").
+		Scan(&rows)
+	if len(rows) == 0 {
+		return nil
 	}
-	var rows []joinedRow
-	err := tx.Table("clients").
-		Select("clients.*, client_inbounds.flow_override AS flow_override").
-		Joins("JOIN client_inbounds ON client_inbounds.client_id = clients.id").
-		Where("client_inbounds.inbound_id = ? AND clients.sub_id = ?", inboundId, subId).
-		Order("clients.id ASC").
-		Find(&rows).Error
-	if err != nil {
-		return nil, err
+	tariffIDs := make(map[int]struct{})
+	for _, r := range rows {
+		tariffIDs[r.TariffID] = struct{}{}
+	}
+	tariffKeys := make([]int, 0, len(tariffIDs))
+	for k := range tariffIDs {
+		tariffKeys = append(tariffKeys, k)
 	}
 
-	out := make([]model.Client, 0, len(rows))
-	for i := range rows {
-		c := rows[i].ToClient()
-		c.Flow = rows[i].FlowOverride
-		out = append(out, *c)
+	// Batch-load all profiles for all candidate tariffs in one query.
+	var allProfiles []struct {
+		TariffID int
+		Profile  model.Profile `gorm:"embedded"`
 	}
-	return out, nil
+	tx.Table("profiles").
+		Select("tariff_profiles.tariff_id, profiles.*").
+		Joins("JOIN tariff_profiles ON tariff_profiles.profile_id = profiles.id").
+		Where("tariff_profiles.tariff_id IN ?", tariffKeys).
+		Order("tariff_profiles.tariff_id, tariff_profiles.position ASC").
+		Scan(&allProfiles)
+
+	tariffProfiles := make(map[int][]model.Profile, len(tariffIDs))
+	for _, ap := range allProfiles {
+		tariffProfiles[ap.TariffID] = append(tariffProfiles[ap.TariffID], ap.Profile)
+	}
+
+	var tariffs []model.Tariff
+	tx.Where("id IN ?", tariffKeys).Find(&tariffs)
+	var result []int
+	for _, t := range tariffs {
+		ctx := &tariffContext{Tariff: &t, Profiles: tariffProfiles[t.Id]}
+		chain := resolveChain(ctx)
+		for _, id := range chain.InboundIds {
+			if id == inboundId {
+				result = append(result, t.Id)
+				break
+			}
+		}
+	}
+	return result
 }

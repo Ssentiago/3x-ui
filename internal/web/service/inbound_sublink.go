@@ -46,10 +46,7 @@ func (s *InboundService) GetAllClientLinks(host string, email string) ([]string,
 	if err != nil {
 		return nil, err
 	}
-	inboundIds, err := s.clientService.GetInboundIdsForRecord(rec.Id)
-	if err != nil {
-		return nil, err
-	}
+	inboundIds := ResolveClientFields(nil, nil, rec).InboundIds
 	var links []string
 	for _, ibId := range inboundIds {
 		inbound, getErr := s.GetInbound(ibId)

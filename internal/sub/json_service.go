@@ -89,6 +89,7 @@ func (s *SubJsonService) GetJson(subId string, host string, alwaysReturnArray bo
 		}
 
 		for _, client := range clients {
+			subReq.resolvedByEmail[client.Email] = client
 			seenEmails[client.Email] = struct{}{}
 			configArray = append(configArray, s.getConfig(subReq, inbound, client, host)...)
 		}

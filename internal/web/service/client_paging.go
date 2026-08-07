@@ -18,19 +18,24 @@ import (
 // so the list payload stays compact even when the panel manages thousands
 // of clients. Modals that need the full record still call /get/:email.
 type ClientSlim struct {
-	Email      string              `json:"email"`
-	SubID      string              `json:"subId"`
-	Enable     bool                `json:"enable"`
-	TotalGB    int64               `json:"totalGB"`
-	ExpiryTime int64               `json:"expiryTime"`
-	LimitIP    int                 `json:"limitIp"`
-	Reset      int                 `json:"reset"`
-	Group      string              `json:"group,omitempty"`
-	Comment    string              `json:"comment,omitempty"`
-	InboundIds []int               `json:"inboundIds"`
-	Traffic    *xray.ClientTraffic `json:"traffic,omitempty"`
-	CreatedAt  int64               `json:"createdAt"`
-	UpdatedAt  int64               `json:"updatedAt"`
+	Email               string              `json:"email"`
+	SubID               string              `json:"subId"`
+	Enable              bool                `json:"enable"`
+	TotalGB             int64               `json:"totalGB"`
+	ExpiryTime          int64               `json:"expiryTime"`
+	LimitIP             int                 `json:"limitIp"`
+	Reset               int                 `json:"reset"`
+	Group               string              `json:"group,omitempty"`
+	Comment             string              `json:"comment,omitempty"`
+	TariffName          string              `json:"tariffName,omitempty"`
+	TotalGBIsOverridden bool                `json:"totalGBIsOverridden"`
+	LimitIPIsOverridden bool                `json:"limitIPIsOverridden"`
+	ExpiryIsOverridden  bool                `json:"expiryIsOverridden"`
+	IsInboundsOverridden bool               `json:"isInboundsOverridden"`
+	InboundIds          []int               `json:"inboundIds"`
+	Traffic             *xray.ClientTraffic `json:"traffic,omitempty"`
+	CreatedAt           int64               `json:"createdAt"`
+	UpdatedAt           int64               `json:"updatedAt"`
 }
 
 // ClientPageParams are the query params accepted by /panel/api/clients/list/paged.
@@ -107,6 +112,26 @@ const (
 	// false: without the COALESCE such a row would match neither the enabled
 	// nor the disabled branch of any predicate.
 	sqlClientEnabled = "COALESCE(c.enable, FALSE)"
+	sqlEffTotalGB    = "CASE WHEN cta.total_gb_override IS NOT NULL THEN cta.total_gb_override ELSE COALESCE(" +
+		"(SELECT CASE WHEN trf2.traffic_strategy = 'sum' THEN SUM(COALESCE(p.traffic, 0)) " +
+		"ELSE (SELECT p_last.traffic FROM tariff_profiles tp_last " +
+		"JOIN profiles p_last ON p_last.id = tp_last.profile_id " +
+		"WHERE tp_last.tariff_id = cgr.tariff_id AND p_last.traffic IS NOT NULL " +
+		"ORDER BY tp_last.position DESC LIMIT 1) END * 1073741824 " +
+		"FROM tariff_profiles tp JOIN profiles p ON p.id = tp.profile_id " +
+		"JOIN tariffs trf2 ON trf2.id = cgr.tariff_id " +
+		"WHERE tp.tariff_id = cgr.tariff_id AND p.traffic IS NOT NULL), c.total_gb) END"
+	sqlEffExpiry = "CASE WHEN cta.expiry_time_override IS NOT NULL THEN cta.expiry_time_override " +
+		"WHEN cgr.tariff_id IS NOT NULL THEN " +
+		"cta.started_at + (SELECT p_last.expiry_days FROM tariff_profiles tp_last " +
+		"JOIN profiles p_last ON p_last.id = tp_last.profile_id " +
+		"WHERE tp_last.tariff_id = cgr.tariff_id AND p_last.expiry_days IS NOT NULL " +
+		"ORDER BY tp_last.position DESC LIMIT 1) * 86400000 ELSE c.expiry_time END"
+	sqlEffLimitIP = "CASE WHEN cta.limit_ip_override IS NOT NULL THEN cta.limit_ip_override ELSE COALESCE(" +
+		"(SELECT p_last.limit_ip FROM tariff_profiles tp_last " +
+		"JOIN profiles p_last ON p_last.id = tp_last.profile_id " +
+		"WHERE tp_last.tariff_id = cgr.tariff_id AND p_last.limit_ip IS NOT NULL " +
+		"ORDER BY tp_last.position DESC LIMIT 1), c.limit_ip) END"
 )
 
 const clientSearchCond = `(LOWER(c.email) LIKE ? ESCAPE '\'
@@ -143,8 +168,12 @@ func newClientQuery(db *gorm.DB, nowMs, expireDiffMs, trafficDiffBytes int64) cl
 		nowMs:            nowMs,
 		expireDiffMs:     expireDiffMs,
 		trafficDiffBytes: trafficDiffBytes,
-		joins:            []clientQueryJoin{{sql: "LEFT JOIN client_traffics ct ON ct.email = c.email"}},
-		usedExpr:         "(COALESCE(ct.up, 0) + COALESCE(ct.down, 0))",
+		joins: []clientQueryJoin{
+			{sql: "LEFT JOIN client_traffics ct ON ct.email = c.email"},
+			{sql: "LEFT JOIN client_groups cgr ON cgr.name = c.group_name"},
+			{sql: "LEFT JOIN client_tariffs cta ON cta.client_id = c.id AND cta.ended_at IS NULL"},
+		},
+		usedExpr: "(COALESCE(ct.up, 0) + COALESCE(ct.down, 0))",
 	}
 	freshSince := globalTrafficFreshSince()
 	var probe int64
@@ -175,13 +204,13 @@ func (q clientQuery) from() *gorm.DB {
 }
 
 func (q clientQuery) depletedExpr() string {
-	return "((c.total_gb > 0 AND " + q.usedExpr + " >= c.total_gb)" +
-		" OR (c.expiry_time > 0 AND c.expiry_time <= " + sqlInt(q.nowMs) + "))"
+	return "((" + sqlEffTotalGB + " > 0 AND " + q.usedExpr + " >= " + sqlEffTotalGB + ")" +
+		" OR (" + sqlEffExpiry + " > 0 AND " + sqlEffExpiry + " <= " + sqlInt(q.nowMs) + "))"
 }
 
 func (q clientQuery) nearDepletionExpr() string {
-	return "((c.expiry_time > 0 AND c.expiry_time - " + sqlInt(q.nowMs) + " < " + sqlInt(q.expireDiffMs) + ")" +
-		" OR (c.total_gb > 0 AND c.total_gb - " + q.usedExpr + " < " + sqlInt(q.trafficDiffBytes) + "))"
+	return "((" + sqlEffExpiry + " > 0 AND " + sqlEffExpiry + " - " + sqlInt(q.nowMs) + " < " + sqlInt(q.expireDiffMs) + ")" +
+		" OR (" + sqlEffTotalGB + " > 0 AND " + sqlEffTotalGB + " - " + q.usedExpr + " < " + sqlInt(q.trafficDiffBytes) + "))"
 }
 
 func (q clientQuery) expiringExpr() string {
@@ -226,14 +255,12 @@ func (q clientQuery) applyParams(tx *gorm.DB, params ClientPageParams, onlines [
 		where(cond, args...)
 	}
 	if params.ExpiryFrom > 0 || params.ExpiryTo > 0 {
-		// 0 means "never expires" and a negative value is the delayed-start
-		// sentinel; both sit outside any bounded range.
-		where("c.expiry_time > 0")
+		where(sqlEffExpiry + " > 0")
 		if params.ExpiryFrom > 0 {
-			where("c.expiry_time >= ?", params.ExpiryFrom)
+			where(sqlEffExpiry+" >= ?", params.ExpiryFrom)
 		}
 		if params.ExpiryTo > 0 {
-			where("c.expiry_time <= ?", params.ExpiryTo)
+			where(sqlEffExpiry+" <= ?", params.ExpiryTo)
 		}
 	}
 	if params.UsageFrom > 0 {
@@ -313,9 +340,9 @@ func (q clientQuery) applyOrder(tx *gorm.DB, sortKey, order string) *gorm.DB {
 	case "traffic":
 		expr = q.usedExpr
 	case "remaining":
-		expr = "CASE WHEN c.total_gb > 0 THEN c.total_gb - " + q.usedExpr + " ELSE " + sqlNeverSentinel + " END"
+		expr = "CASE WHEN " + sqlEffTotalGB + " > 0 THEN " + sqlEffTotalGB + " - " + q.usedExpr + " ELSE " + sqlNeverSentinel + " END"
 	case "expiryTime":
-		expr = "CASE WHEN c.expiry_time > 0 THEN c.expiry_time ELSE " + sqlNeverSentinel + " END"
+		expr = "CASE WHEN " + sqlEffExpiry + " > 0 THEN " + sqlEffExpiry + " ELSE " + sqlNeverSentinel + " END"
 	case "createdAt":
 		expr, tieDir = "c.created_at", dir
 	case "updatedAt":
@@ -439,6 +466,12 @@ func (q clientQuery) pageRows(params ClientPageParams, onlines []string, offset,
 		attachments[l.ClientId] = append(attachments[l.ClientId], l.InboundId)
 	}
 
+	resolver := NewBatchResolver(q.db, byId)
+
+	// Resolve effective inbounds: merge tariff-resolved inbound chains for
+	// clients whose group has a tariff and is_inbounds_overridden is FALSE.
+	effectiveInbounds := resolveEffectiveInboundsForPage(q.db, byId, attachments, resolver.activeCT)
+
 	trafficByEmail := make(map[string]*xray.ClientTraffic, len(emails))
 	if len(emails) > 0 {
 		var stats []xray.ClientTraffic
@@ -451,26 +484,39 @@ func (q clientQuery) pageRows(params ClientPageParams, onlines []string, offset,
 		}
 	}
 
+	groupTariffs := loadGroupTariffs(q.db, byId)
+
 	items := make([]ClientSlim, 0, len(ids))
 	for _, id := range ids {
 		rec := byId[id]
 		if rec == nil {
 			continue
 		}
+		f := resolver.ResolveLimits(rec)
+		tariffName := ""
+		if tariff := groupTariffs[rec.Group]; tariff != nil {
+			tariffName = tariff.Name
+		}
+		active := resolver.activeCT[rec.Id]
 		items = append(items, ClientSlim{
-			Email:      rec.Email,
-			SubID:      rec.SubID,
-			Enable:     rec.Enable,
-			TotalGB:    rec.TotalGB,
-			ExpiryTime: rec.ExpiryTime,
-			LimitIP:    rec.LimitIP,
-			Reset:      rec.Reset,
-			Group:      rec.Group,
-			Comment:    rec.Comment,
-			InboundIds: attachments[rec.Id],
-			Traffic:    trafficByEmail[rec.Email],
-			CreatedAt:  rec.CreatedAt,
-			UpdatedAt:  rec.UpdatedAt,
+			Email:               rec.Email,
+			SubID:               rec.SubID,
+			Enable:              rec.Enable,
+			TotalGB:             f.TotalGB,
+			ExpiryTime:          f.ExpiryTime,
+			LimitIP:             f.LimitIP,
+			Reset:               rec.Reset,
+			Group:               rec.Group,
+			Comment:             rec.Comment,
+			TariffName:          tariffName,
+			TotalGBIsOverridden: active != nil && active.TotalGBOverride != nil,
+			LimitIPIsOverridden: active != nil && active.LimitIPOverride != nil,
+			ExpiryIsOverridden:  active != nil && active.ExpiryTimeOverride != nil,
+			IsInboundsOverridden: active != nil && active.IsInboundsOverridden,
+			InboundIds:           effectiveInbounds[rec.Id],
+			Traffic:             trafficByEmail[rec.Email],
+			CreatedAt:           rec.CreatedAt,
+			UpdatedAt:           rec.UpdatedAt,
 		})
 	}
 	return items, nil
@@ -563,10 +609,54 @@ func (q clientQuery) onlineEmails(onlines []string) ([]string, int, error) {
 	return matched, count, nil
 }
 
-// listGroupNames returns the group names the clients page offers as filters:
-// the stored groups plus any name a client still carries. ListGroups also sums
-// per-client traffic per group, which this page never reads and which costs a
-// full join over client_traffics on every poll.
+func loadGroupTariffs(db *gorm.DB, records map[int]*model.ClientRecord) map[string]*model.Tariff {
+	groupNames := make(map[string]struct{})
+	for _, rec := range records {
+		if rec.Group != "" {
+			groupNames[rec.Group] = struct{}{}
+		}
+	}
+	if len(groupNames) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(groupNames))
+	for name := range groupNames {
+		names = append(names, name)
+	}
+	var groups []model.ClientGroup
+	if err := db.Where("name IN ?", names).Find(&groups).Error; err != nil {
+		return nil
+	}
+	groupTariffIDs := make(map[string]*int)
+	for i := range groups {
+		groupTariffIDs[groups[i].Name] = groups[i].TariffID
+	}
+	var tariffIDs []int
+	for _, tid := range groupTariffIDs {
+		if tid != nil {
+			tariffIDs = append(tariffIDs, *tid)
+		}
+	}
+	if len(tariffIDs) == 0 {
+		return nil
+	}
+	var tariffs []model.Tariff
+	if err := db.Where("id IN ?", tariffIDs).Find(&tariffs).Error; err != nil {
+		return nil
+	}
+	tariffByID := make(map[int]*model.Tariff, len(tariffs))
+	for i := range tariffs {
+		tariffByID[tariffs[i].Id] = &tariffs[i]
+	}
+	result := make(map[string]*model.Tariff)
+	for name, tid := range groupTariffIDs {
+		if tid != nil {
+			result[name] = tariffByID[*tid]
+		}
+	}
+	return result
+}
+
 func (s *ClientService) listGroupNames() ([]string, error) {
 	db := database.GetDB()
 	var stored []string

@@ -491,11 +491,12 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB) (bool, int64, error) {
 // happens to reuse an orphaned email still inherits that row's leftover
 // up/down, since nothing at this call site can tell the two cases apart.
 func (s *InboundService) AddClientStat(tx *gorm.DB, inboundId int, client *model.Client) error {
+	effectiveTotal, effectiveExpiry := resolveEffectiveTraffic(tx, client.Email, client.TotalGB, client.ExpiryTime)
 	clientTraffic := xray.ClientTraffic{
 		InboundId:  inboundId,
 		Email:      client.Email,
-		Total:      client.TotalGB,
-		ExpiryTime: client.ExpiryTime,
+		Total:      effectiveTotal,
+		ExpiryTime: effectiveExpiry,
 		Enable:     client.Enable,
 		Reset:      client.Reset,
 	}
@@ -506,13 +507,14 @@ func (s *InboundService) AddClientStat(tx *gorm.DB, inboundId int, client *model
 }
 
 func (s *InboundService) UpdateClientStat(tx *gorm.DB, email string, client *model.Client) error {
+	effectiveTotal, effectiveExpiry := resolveEffectiveTraffic(tx, email, client.TotalGB, client.ExpiryTime)
 	result := tx.Model(xray.ClientTraffic{}).
 		Where("email = ?", email).
 		Updates(map[string]any{
 			"enable":      client.Enable,
 			"email":       client.Email,
-			"total":       client.TotalGB,
-			"expiry_time": client.ExpiryTime,
+			"total":       effectiveTotal,
+			"expiry_time": effectiveExpiry,
 			"reset":       client.Reset,
 		})
 	err := result.Error

@@ -47,6 +47,8 @@ func NewClientController(g *gin.RouterGroup) *ClientController {
 func (a *ClientController) initRouter(g *gin.RouterGroup) {
 	g.GET("/list", a.list)
 	g.GET("/list/paged", a.listPaged)
+	g.GET("/get/resolve/:email", a.resolveForGroup)
+	g.GET("/get/effective/:email", a.getEffective)
 	g.GET("/get/:email", a.get)
 	g.GET("/get/tgId/:tgId", a.getByTgId)
 	g.GET("/traffic/:email", a.getTrafficByEmail)
@@ -106,6 +108,9 @@ func (a *ClientController) listPaged(c *gin.Context) {
 	jsonObj(c, resp, nil)
 }
 
+// buildClientPayload returns raw (non-tariff-resolved) client data for the
+// edit form. inboundIds come from client_inbounds only. Tariff-effective values
+// are resolved separately via GET /get/resolve/:email?group=X.
 func (a *ClientController) buildClientPayload(rec *model.ClientRecord) (gin.H, error) {
 	inboundIds, err := a.clientService.GetInboundIdsForRecord(rec.Id)
 	if err != nil {
@@ -145,6 +150,42 @@ func (a *ClientController) get(c *gin.Context) {
 		return
 	}
 	jsonObj(c, payload, nil)
+}
+
+// resolveForGroup resolves what the client's effective values would be if they
+// were in the given group. Used by the edit form to preview tariff values
+// before saving.
+func (a *ClientController) resolveForGroup(c *gin.Context) {
+	email := c.Param("email")
+	group := c.Query("group")
+	if group == "" {
+		jsonObj(c, gin.H{}, nil)
+		return
+	}
+	resolved, err := a.clientService.ResolveForGroup(email, group)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	if resolved == nil {
+		jsonObj(c, gin.H{}, nil)
+		return
+	}
+	jsonObj(c, resolved, nil)
+}
+
+func (a *ClientController) getEffective(c *gin.Context) {
+	email := c.Param("email")
+	eff, err := a.clientService.GetEffective(nil, email)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.inbounds.toasts.obtain"), err)
+		return
+	}
+	if eff == nil {
+		jsonObj(c, gin.H{}, nil)
+		return
+	}
+	jsonObj(c, eff, nil)
 }
 
 func (a *ClientController) getByTgId(c *gin.Context) {
