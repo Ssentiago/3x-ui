@@ -990,7 +990,6 @@ export const SCHEMAS: Record<string, unknown> = {
     "type": "object"
   },
   "Client": {
-    "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
     "properties": {
       "adTag": {
         "example": "0123456789abcdef0123456789abcdef",
@@ -1024,9 +1023,11 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "boolean"
       },
       "expiryTime": {
-        "description": "Expiration timestamp",
         "format": "int64",
         "type": "integer"
+      },
+      "expiryTimeMode": {
+        "type": "string"
       },
       "flow": {
         "description": "Flow control (XTLS)",
@@ -1046,6 +1047,9 @@ export const SCHEMAS: Record<string, unknown> = {
       "limitIp": {
         "description": "IP limit for this client",
         "type": "integer"
+      },
+      "limitIpMode": {
+        "type": "string"
       },
       "password": {
         "description": "Client password",
@@ -1091,9 +1095,11 @@ export const SCHEMAS: Record<string, unknown> = {
         "type": "integer"
       },
       "totalGB": {
-        "description": "Total traffic limit in GB",
         "format": "int64",
         "type": "integer"
+      },
+      "totalGBMode": {
+        "type": "string"
       },
       "updated_at": {
         "description": "Last update timestamp",
@@ -1106,12 +1112,15 @@ export const SCHEMAS: Record<string, unknown> = {
       "email",
       "enable",
       "expiryTime",
+      "expiryTimeMode",
       "limitIp",
+      "limitIpMode",
       "reset",
       "security",
       "subId",
       "tgId",
-      "totalGB"
+      "totalGB",
+      "totalGBMode"
     ],
     "type": "object"
   },
@@ -2681,6 +2690,54 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "Profile": {
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "expiryDays": {
+        "example": 30,
+        "nullable": true,
+        "type": "integer"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "inboundIds": {
+        "example": "[1,2]",
+        "type": "string"
+      },
+      "limitIp": {
+        "example": 3,
+        "nullable": true,
+        "type": "integer"
+      },
+      "name": {
+        "example": "BASE",
+        "type": "string"
+      },
+      "traffic": {
+        "example": 100,
+        "format": "int64",
+        "nullable": true,
+        "type": "integer"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "id",
+      "inboundIds",
+      "name",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
   "RealityScanResult": {
     "properties": {
       "alpn": {
@@ -2779,6 +2836,27 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "ResolvedFields": {
+    "properties": {
+      "expiryDays": {
+        "type": "integer"
+      },
+      "inboundIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "limitIp": {
+        "type": "integer"
+      },
+      "traffic": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "type": "object"
+  },
   "Setting": {
     "description": "Setting stores key-value configuration settings for the 3x-ui panel.",
     "properties": {
@@ -2796,6 +2874,145 @@ export const SCHEMAS: Record<string, unknown> = {
       "id",
       "key",
       "value"
+    ],
+    "type": "object"
+  },
+  "Tariff": {
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "example": true,
+        "type": "boolean"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "inboundStrategy": {
+        "example": "union",
+        "type": "string"
+      },
+      "name": {
+        "example": "Gold",
+        "type": "string"
+      },
+      "trafficStrategy": {
+        "example": "sum",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "enable",
+      "id",
+      "inboundStrategy",
+      "name",
+      "trafficStrategy",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "TariffProfile": {
+    "properties": {
+      "position": {
+        "type": "integer"
+      },
+      "profileId": {
+        "type": "integer"
+      },
+      "tariffId": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "position",
+      "profileId",
+      "tariffId"
+    ],
+    "type": "object"
+  },
+  "TariffProfileItem": {
+    "properties": {
+      "id": {
+        "type": "integer"
+      },
+      "name": {
+        "type": "string"
+      },
+      "position": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "position"
+    ],
+    "type": "object"
+  },
+  "TariffSummary": {
+    "properties": {
+      "clientCount": {
+        "type": "integer"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enable": {
+        "type": "boolean"
+      },
+      "groupCount": {
+        "type": "integer"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "inboundStrategy": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "profiles": {
+        "items": {
+          "$ref": "#/components/schemas/TariffProfileItem"
+        },
+        "type": "array"
+      },
+      "resolved": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ResolvedFields"
+          }
+        ],
+        "nullable": true
+      },
+      "trafficStrategy": {
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "clientCount",
+      "createdAt",
+      "enable",
+      "groupCount",
+      "id",
+      "inboundStrategy",
+      "name",
+      "trafficStrategy",
+      "updatedAt"
     ],
     "type": "object"
   },

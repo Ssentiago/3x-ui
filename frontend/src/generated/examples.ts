@@ -242,11 +242,13 @@ export const EXAMPLES: Record<string, unknown> = {
     "email": "",
     "enable": false,
     "expiryTime": 0,
+    "expiryTimeMode": "",
     "flow": "",
     "group": "",
     "id": "",
     "keepAlive": 0,
     "limitIp": 0,
+    "limitIpMode": "",
     "password": "",
     "preSharedKey": "",
     "privateKey": "",
@@ -258,6 +260,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "subId": "",
     "tgId": 0,
     "totalGB": 0,
+    "totalGBMode": "",
     "updated_at": 0
   },
   "ClientInbound": {
@@ -627,6 +630,16 @@ export const EXAMPLES: Record<string, unknown> = {
     "xrayState": "",
     "xrayVersion": "25.10.31"
   },
+  "Profile": {
+    "createdAt": 0,
+    "expiryDays": 30,
+    "id": 1,
+    "inboundIds": "[1,2]",
+    "limitIp": 3,
+    "name": "BASE",
+    "traffic": 100,
+    "updatedAt": 0
+  },
   "RealityScanResult": {
     "alpn": "h2",
     "certIssuer": "Google Trust Services",
@@ -649,10 +662,56 @@ export const EXAMPLES: Record<string, unknown> = {
     "tlsVersion": "1.3",
     "x25519": true
   },
+  "ResolvedFields": {
+    "expiryDays": 0,
+    "inboundIds": [
+      0
+    ],
+    "limitIp": 0,
+    "traffic": 0
+  },
   "Setting": {
     "id": 0,
     "key": "",
     "value": ""
+  },
+  "Tariff": {
+    "createdAt": 0,
+    "enable": true,
+    "id": 1,
+    "inboundStrategy": "union",
+    "name": "Gold",
+    "trafficStrategy": "sum",
+    "updatedAt": 0
+  },
+  "TariffProfile": {
+    "position": 0,
+    "profileId": 0,
+    "tariffId": 0
+  },
+  "TariffProfileItem": {
+    "id": 0,
+    "name": "",
+    "position": 0
+  },
+  "TariffSummary": {
+    "clientCount": 0,
+    "createdAt": 0,
+    "enable": false,
+    "groupCount": 0,
+    "id": 0,
+    "inboundStrategy": "",
+    "name": "",
+    "profiles": [
+      {
+        "id": 0,
+        "name": "",
+        "position": 0
+      }
+    ],
+    "resolved": null,
+    "trafficStrategy": "",
+    "updatedAt": 0
   },
   "User": {
     "id": 0,

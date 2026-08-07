@@ -45,7 +45,7 @@ func run(root, outDir string) error {
 				"TariffProfileItem",
 				"ResolvedFields",
 			),
-			AliasAllow: setOf("Protocol"),
+			AliasAllow: setOf("Protocol", "FieldMode"),
 			Overrides: map[string][]walkOverride{
 				"Inbound": {
 					{Field: "Settings", Kind: KindAny},
