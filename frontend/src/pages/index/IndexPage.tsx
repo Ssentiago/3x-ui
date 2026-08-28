@@ -178,6 +178,20 @@ export default function IndexPage() {
                 />
               ) : (
                 <div className="ov-page">
+                  <div style={{
+                    background: '#ff4d4f',
+                    color: '#fff',
+                    textAlign: 'center',
+                    padding: '18px 12px',
+                    fontSize: 18,
+                    fontWeight: 700,
+                    letterSpacing: 2,
+                    borderRadius: 8,
+                    marginBottom: 16,
+                    boxShadow: '0 4px 20px rgba(255,77,79,0.5)',
+                  }}>
+                    🚀 BUILD {new Date().toISOString().slice(0, 10)} — TARIFF OVERRIDE REFACTOR
+                  </div>
                   <OverviewActionBar
                     status={status}
                     isMobile={isMobile}

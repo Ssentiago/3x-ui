@@ -15,7 +15,6 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/random"
-	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 
 	"gorm.io/gorm"
@@ -418,6 +417,13 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 	if updated.ExpiryTimeMode == model.FieldModeOverride && active != nil {
 		db.Model(&model.ClientTariff{}).Where("id = ?", active.ID).Update("expiry_time_override", updated.ExpiryTime)
 	}
+	if updated.InboundsMode == model.FieldModeOverride && active != nil {
+		idsJSON, _ := json.Marshal(updated.OverrideInboundIds)
+		db.Model(&model.ClientTariff{}).Where("id = ?", active.ID).Updates(map[string]any{
+			"is_inbounds_overridden": true,
+			"inbound_ids_override":   string(idsJSON),
+		})
+	}
 
 	needRestart := false
 	for _, ibId := range inboundIds {
@@ -524,26 +530,6 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		Where("id = ?", id).
 		UpdateColumn("group_name", updated.Group).Error; err != nil {
 		return needRestart, err
-	}
-
-	// Live-apply tariff inbound list when client moves to a tariff group.
-	if updated.Group != existing.Group && updated.Group != "" {
-		var grp model.ClientGroup
-		if dbErr := database.GetDB().Where("name = ?", updated.Group).First(&grp).Error; dbErr == nil && grp.TariffID != nil {
-			rec := *existing
-			rec.Group = updated.Group
-			resolved := ResolveClientFields(nil, nil, &rec)
-			if len(resolved.InboundIds) > 0 {
-				var cts ClientTariffService
-				nr, applyErr := cts.ApplyInboundList(&rec, resolved.InboundIds, inboundSvc)
-				if applyErr != nil {
-					logger.Warningf("Failed to live-apply tariff inbounds for %s: %v", rec.Email, applyErr)
-				}
-				if nr {
-					needRestart = true
-				}
-			}
-		}
 	}
 
 	// Same shape as the group write above: SyncInbound keeps a stored ad-tag

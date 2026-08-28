@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router';
 import {
   Button,
   Card,
@@ -61,7 +62,15 @@ export default function GroupsPage() {
   useEffect(() => { setMessageInstance(messageApi); }, [messageApi]);
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState('groups');
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const activeTab = pathname.endsWith('/tariffs') ? 'tariffs'
+    : pathname.endsWith('/profiles') ? 'profiles'
+    : 'groups';
+
+  const handleTabChange = useCallback((tab: string) => {
+    navigate(tab === 'groups' ? '/groups' : `/groups/${tab}`, { replace: true });
+  }, [navigate]);
 
   const groupsQuery = useQuery({
     queryKey: keys.clients.groups(),
@@ -144,7 +153,7 @@ export default function GroupsPage() {
                     <Card size="small" hoverable>
                       <Tabs
                         activeKey={activeTab}
-                        onChange={setActiveTab}
+                        onChange={handleTabChange}
                         items={[
                           {
                             key: 'groups',

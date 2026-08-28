@@ -19,7 +19,7 @@ describe('useTariffOverrides', () => {
   const wrapper = makeWrapper();
 
   it('marks all fields as managed when no overrides and client exists', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, true, true), { wrapper });
 
     expect(result.current.isFieldManaged('totalGB')).toBe(true);
@@ -29,7 +29,7 @@ describe('useTariffOverrides', () => {
   });
 
   it('makeLocal un-manages a field', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, true, true), { wrapper });
 
     expect(result.current.isFieldManaged('totalGB')).toBe(true);
@@ -40,7 +40,7 @@ describe('useTariffOverrides', () => {
   });
 
   it('makeLocal removes field from removed set (idempotent)', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, true, true), { wrapper });
 
     act(() => result.current.returnToTariff('totalGB'));
@@ -51,7 +51,7 @@ describe('useTariffOverrides', () => {
   });
 
   it('returnToTariff re-manages a previously made-local field', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, true, true), { wrapper });
 
     act(() => result.current.makeLocal('limitIP'));
@@ -62,7 +62,7 @@ describe('useTariffOverrides', () => {
   });
 
   it('computeDiff returns fields to override and return', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, true, true), { wrapper });
 
     act(() => result.current.makeLocal('totalGB'));
@@ -74,7 +74,7 @@ describe('useTariffOverrides', () => {
   });
 
   it('computeDiff detects return of previously overridden field', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, true, true), { wrapper });
 
     act(() => result.current.makeLocal('totalGB'));
@@ -86,14 +86,14 @@ describe('useTariffOverrides', () => {
   });
 
   it('all fields managed when not in edit mode', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(withTariff, false, true), { wrapper });
 
     expect(result.current.isFieldManaged('totalGB')).toBe(true);
   });
 
   it('all fields managed when client is null', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result } = renderHook(() => useTariffOverrides(null, true, true), { wrapper });
 
     expect(result.current.isFieldManaged('totalGB')).toBe(true);
@@ -103,7 +103,7 @@ describe('useTariffOverrides', () => {
   });
 
   it('reset added set when modal closes', () => {
-    vi.spyOn(HttpUtil, 'get').mockResolvedValue({});
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue({ success: true, msg: '', obj: {} });
     const { result, rerender } = renderHook(
       ({ open }) => useTariffOverrides(withTariff, true, open),
       { initialProps: { open: true }, wrapper },

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -180,7 +181,11 @@ func (s *ClientTariffService) OverrideField(email string, field string) error {
 	case "expiryTime":
 		return db.Model(&ct).Update("expiry_time_override", f.ExpiryTime).Error
 	case "inbounds":
-		return db.Model(&ct).Update("is_inbounds_overridden", true).Error
+		idsJSON, _ := json.Marshal(f.InboundIds)
+		return db.Model(&ct).Updates(map[string]any{
+			"is_inbounds_overridden": true,
+			"inbound_ids_override":   string(idsJSON),
+		}).Error
 	default:
 		return fmt.Errorf("unknown field: %s", field)
 	}
@@ -206,35 +211,10 @@ func (s *ClientTariffService) ReturnToTariff(email string, field string) error {
 	case "expiryTime":
 		return db.Model(&ct).Update("expiry_time_override", nil).Error
 	case "inbounds":
-		if err := db.Model(&ct).Update("is_inbounds_overridden", false).Error; err != nil {
-			return err
-		}
-		ctx, _ := s.resolveForClient(db, &client)
-		if ctx != nil {
-			chain := resolveChain(ctx)
-			ids := chain.InboundIds
-			if ctx.Tariff.InboundStrategy == model.StrategyUnion {
-				var ownIds []int
-				db.Table("client_inbounds").Where("client_id = ?", client.Id).Pluck("inbound_id", &ownIds)
-				seen := make(map[int]struct{}, len(ownIds)+len(ids))
-				for _, id := range ownIds {
-					seen[id] = struct{}{}
-				}
-				for _, id := range ids {
-					if _, ok := seen[id]; !ok {
-						ids = append(ids, id)
-						seen[id] = struct{}{}
-					}
-				}
-			}
-			if len(ids) > 0 {
-				var ibs InboundService
-				if _, err := s.ApplyInboundList(&client, ids, &ibs); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
+		return db.Model(&ct).Updates(map[string]any{
+			"is_inbounds_overridden": false,
+			"inbound_ids_override":   nil,
+		}).Error
 	default:
 		return fmt.Errorf("unknown field: %s", field)
 	}

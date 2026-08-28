@@ -237,6 +237,8 @@ func (a *ClientController) update(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	logger.Infof("🔴 UPDATE %s: inboundsMode=%q overrideInboundIds=%v totalGBMode=%q",
+		email, updated.InboundsMode, updated.OverrideInboundIds, updated.TotalGBMode)
 	inboundFilter := parseInboundIdsQuery(c.Query("inboundIds"))
 	needRestart, err := a.clientService.UpdateByEmail(&a.inboundService, email, updated, inboundFilter...)
 	if err != nil {

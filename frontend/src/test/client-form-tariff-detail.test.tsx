@@ -123,18 +123,22 @@ function renderForm({
 
   vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
     const urlStr = String(url);
-    if (urlStr.includes(`/client/get/effective/${encodeURIComponent(client.email)}`)) {
+    if (urlStr.includes(`/clients/get/effective/${encodeURIComponent(client.email)}`)) {
       return {
-        isTotalGBOverridden: !!(client as Record<string, unknown>).totalGBIsOverridden,
-        isLimitIPOverridden: !!(client as Record<string, unknown>).limitIPIsOverridden,
-        isExpiryOverridden: !!(client as Record<string, unknown>).expiryIsOverridden,
-        isInboundsOverridden: !!(client as Record<string, unknown>).isInboundsOverridden,
+        success: true,
+        msg: '',
+        obj: {
+          isTotalGBOverridden: !!(client as Record<string, unknown>).totalGBIsOverridden,
+          isLimitIPOverridden: !!(client as Record<string, unknown>).limitIPIsOverridden,
+          isExpiryOverridden: !!(client as Record<string, unknown>).expiryIsOverridden,
+          isInboundsOverridden: !!(client as Record<string, unknown>).isInboundsOverridden,
+        },
       };
     }
     if (resolveValues && urlStr.includes('/clients/get/resolve/')) {
-      return resolveValues;
+      return { success: true, msg: '', obj: resolveValues };
     }
-    return {};
+    return { success: true, msg: '', obj: {} };
   });
 
   render(
@@ -315,5 +319,23 @@ describe('ClientFormModal — save with tariff client', () => {
     expect(payload.totalGBMode).toBe('override');
     expect(payload.limitIpMode).toBe('tariff');
     expect(payload.expiryTimeMode).toBe('tariff');
+  });
+
+  it('sends inboundsMode=override and overrideInboundIds when inbounds overridden', async () => {
+    const save = vi.fn().mockResolvedValue({ success: true });
+    renderForm({
+      client: makeTariffClient({ isInboundsOverridden: true }),
+      save,
+      attachedIds: [1],
+    });
+    await screen.findByText(/save/i, {}, { timeout: 10000 });
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+
+    const payload = save.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.inboundsMode).toBe('override');
+    expect(Array.isArray(payload.overrideInboundIds)).toBe(true);
   });
 });

@@ -885,6 +885,8 @@ type Client struct {
 	TotalGBMode  FieldMode      `json:"totalGBMode"`
 	ExpiryTime   int64          `json:"expiryTime" form:"expiryTime"`
 	ExpiryTimeMode FieldMode    `json:"expiryTimeMode"`
+	InboundsMode     FieldMode    `json:"inboundsMode"`
+	OverrideInboundIds []int      `json:"overrideInboundIds,omitempty"`
 	Enable       bool           `json:"enable" form:"enable"`         // Whether the client is enabled
 	TgID         int64          `json:"tgId" form:"tgId"`             // Telegram user ID for notifications
 	SubID        string         `json:"subId" form:"subId"`           // Subscription identifier
@@ -1381,7 +1383,8 @@ type ClientTariff struct {
 	TotalGBOverride       *int64 `json:"totalGBOverride" gorm:"column:total_gb_override"`
 	LimitIPOverride       *int   `json:"limitIPOverride" gorm:"column:limit_ip_override"`
 	ExpiryTimeOverride    *int64 `json:"expiryTimeOverride" gorm:"column:expiry_time_override"`
-	IsInboundsOverridden  bool   `json:"isInboundsOverridden" gorm:"column:is_inbounds_overridden;default:false"`
+	IsInboundsOverridden  bool    `json:"isInboundsOverridden" gorm:"column:is_inbounds_overridden;default:false"`
+	InboundIDsOverride    *string `json:"inboundIDsOverride" gorm:"column:inbound_ids_override"`
 }
 
 func (ClientTariff) TableName() string { return "client_tariffs" }

@@ -239,10 +239,10 @@ export default function AppSidebar() {
     : xrayActive
       ? `/xray${hash || '#basic'}`
       : groupsActive
-        ? pathname
+        ? '/groups'
         : (pathname === '' ? '/' : pathname);
 
-  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : groupsActive ? '/groups' : null;
+  const openSubmenu = settingsActive ? '/settings' : xrayActive ? '/xray' : null;
   const [openKeys, setOpenKeys] = useState<string[]>(() => (openSubmenu ? [openSubmenu] : []));
   useEffect(() => {
     if (openSubmenu) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AutoComplete,
@@ -38,15 +38,13 @@ import { ClientFormSchema, ClientCreateFormSchema, type ClientFormValues, GroupS
 import { useQuery } from '@tanstack/react-query';
 import { keys } from '@/api/queryKeys';
 import ManagedField from '@/components/ManagedField';
-import { useTariffOverrides } from '@/hooks/useTariffOverrides';
+import { useClientTariffState } from '@/hooks/useClientTariffState';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305'] as const;
 
 const CLIENT_FORM_MODAL_Z_INDEX = 1000;
 const CLIENT_IP_LOG_MODAL_Z_INDEX = CLIENT_FORM_MODAL_Z_INDEX + 1;
-
-const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as const;
 
 interface ExternalLinkRow {
   kind: 'link' | 'subscription';
@@ -186,7 +184,6 @@ export default function ClientFormModal({
   const wgPrivateKey = useWatch({ control: methods.control, name: 'wgPrivateKey' });
   const limitIp = useWatch({ control: methods.control, name: 'limitIp' });
   const totalGB = useWatch({ control: methods.control, name: 'totalGB' });
-  const tar = useTariffOverrides(client, isEdit, open);
   const {
     fields: externalLinkFields,
     append: appendExternalLink,
@@ -226,19 +223,68 @@ export default function ClientFormModal({
     return groups.find((g) => g.name === groupValue) || null;
   }, [groupValue, groups]);
 
+  const tar = useClientTariffState(client, selectedGroup, attachedIds, isEdit, open);
+  const { tariffValue, clientValue, isFieldManaged, tariffMode, makeLocal, returnToTariff, submitFieldOps, isManaged } = tar;
+
   const tariffName = useMemo(() => {
     return selectedGroup?.tariffName || selectedGroup?.name || '';
   }, [selectedGroup]);
 
-  const isManaged = useMemo(() => {
-    return !!selectedGroup?.tariff;
-  }, [selectedGroup]);
-  const { isFieldManaged: fieldOverrideFree, makeLocal, returnToTariff, computeDiff } = tar;
+  const handleMakeLocal = useCallback((field: string) => {
+    makeLocal(field as 'totalGB' | 'limitIP' | 'expiryTime' | 'inbounds');
+  }, [makeLocal]);
 
-  const isFieldManaged = useCallback((f: string) => isManaged && fieldOverrideFree(f), [isManaged, fieldOverrideFree]);
+  const handleReturnToTariff = useCallback((field: string) => {
+    returnToTariff(field as 'totalGB' | 'limitIP' | 'expiryTime' | 'inbounds');
+  }, [returnToTariff]);
+
+  // Sync form values when override state changes. Imperative setValue inside
+  // the click handler races with ManagedField unmounting its Popover overlay;
+  // this effect catches the transition after the new DOM is settled.
+  const prevOverridesRef = useRef(isFieldManaged);
+  useEffect(() => {
+    const prev = prevOverridesRef.current;
+    for (const field of ['totalGB', 'limitIP', 'expiryTime', 'inbounds'] as const) {
+      const wasManaged = prev(field);
+      const nowManaged = isFieldManaged(field);
+      if (wasManaged === nowManaged) continue;
+      // Set form value to resolved value for both directions.
+      // managed→managed: tariffValue already shown (no-op).
+      // local→managed:   tariff value takes over.
+      // managed→local:   override or tariff value from tariffValue.
+      if (tariffValue) {
+        switch (field) {
+          case 'totalGB':
+            methods.setValue('totalGB', bytesToGB(tariffValue.totalGB));
+            break;
+          case 'limitIP':
+            methods.setValue('limitIp', tariffValue.limitIp);
+            break;
+          case 'expiryTime': {
+            const tv = tariffValue.expiryTime;
+            if (tv < 0) {
+              const startDate = client?.tariffStartedAt ?? Date.now();
+              methods.setValue('delayedStart', false);
+              methods.setValue('delayedDays', 0);
+              methods.setValue('expiryDate', startDate + Math.abs(tv));
+            } else {
+              methods.setValue('delayedStart', false);
+              methods.setValue('delayedDays', 0);
+              methods.setValue('expiryDate', tv > 0 ? tv : 0);
+            }
+            break;
+          }
+          case 'inbounds':
+            if (tariffValue.inboundIds.length > 0) methods.setValue('inboundIds', [...tariffValue.inboundIds]);
+            break;
+        }
+      }
+    }
+    prevOverridesRef.current = isFieldManaged;
+  }, [isFieldManaged, tariffValue, clientValue, methods, client]);
 
   const expiryManaged = isManaged && isEdit && !!selectedGroup?.tariff?.enable && !delayedStart;
-  const expiryDisabled = expiryManaged && fieldOverrideFree('expiryTime');
+  const expiryDisabled = expiryManaged && isFieldManaged('expiryTime');
 
   function addExternalLinkRow(kind: 'link' | 'subscription') {
     appendExternalLink({ kind, value: '', remark: '' });
@@ -306,67 +352,47 @@ export default function ClientFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEdit]);
 
-  // When the user selects a group with a tariff, fetch the resolved effective
-  // values from the API. When the group is cleared (or changed to one without
-  // a tariff), restore the client's own raw values from the client prop.
+  // Restore raw client values when group has no tariff.
   useEffect(() => {
-    if (!selectedGroup?.tariff) {
-      // No tariff group selected — restore raw client values.
-      if (!client) return;
-      const et = Number(client.expiryTime) || 0;
-      methods.setValue('totalGB', bytesToGB(client.totalGB || 0));
-      methods.setValue('limitIp', client.limitIp || 0);
-      if (et < 0) {
-        methods.setValue('delayedStart', true);
-        methods.setValue('delayedDays', Math.round(et / -86400000));
-        methods.setValue('expiryDate', 0);
+    if (selectedGroup?.tariff) return;
+    if (!client) return;
+    const et = Number(client.expiryTime) || 0;
+    methods.setValue('totalGB', bytesToGB(client.totalGB || 0));
+    methods.setValue('limitIp', client.limitIp || 0);
+    if (et < 0) {
+      methods.setValue('delayedStart', true);
+      methods.setValue('delayedDays', Math.round(et / -86400000));
+      methods.setValue('expiryDate', 0);
+    } else {
+      methods.setValue('delayedStart', false);
+      methods.setValue('delayedDays', 0);
+      methods.setValue('expiryDate', et > 0 ? et : 0);
+    }
+    methods.setValue('inboundIds', Array.isArray(attachedIds) ? [...attachedIds] : []);
+  }, [selectedGroup?.tariff, client, methods, attachedIds]);
+
+  // Apply tariff values to managed fields when tariffValue first arrives or changes.
+  useEffect(() => {
+    if (!tariffValue) return;
+    if (isFieldManaged('totalGB')) methods.setValue('totalGB', bytesToGB(tariffValue.totalGB));
+    if (isFieldManaged('limitIP')) methods.setValue('limitIp', tariffValue.limitIp);
+    if (isFieldManaged('expiryTime')) {
+      const tv = tariffValue.expiryTime;
+      if (tv < 0) {
+        const startDate = client?.tariffStartedAt ?? Date.now();
+        methods.setValue('delayedStart', false);
+        methods.setValue('delayedDays', 0);
+        methods.setValue('expiryDate', startDate + Math.abs(tv));
       } else {
         methods.setValue('delayedStart', false);
         methods.setValue('delayedDays', 0);
-        methods.setValue('expiryDate', et > 0 ? et : 0);
+        methods.setValue('expiryDate', tv > 0 ? tv : 0);
       }
-      methods.setValue('inboundIds', Array.isArray(attachedIds) ? [...attachedIds] : []);
-      return;
     }
-    // Tariff group selected — fetch resolved values.
-    if (!client?.email) return;
-    const groupName = selectedGroup.name;
-    let cancelled = false;
-    (async () => {
-      const msg = await HttpUtil.get(
-        `/panel/api/clients/get/resolve/${encodeURIComponent(client.email!)}?group=${encodeURIComponent(groupName)}`,
-      ) as ApiMsg<{ totalGB?: number; expiryTime?: number; limitIp?: number; inboundIds?: number[] }>;
-      if (cancelled || !msg?.success || !msg.obj) return;
-      const r = msg.obj;
-      if (r.totalGB !== undefined && r.totalGB !== null) {
-        methods.setValue('totalGB', bytesToGB(r.totalGB));
-      }
-      if (r.limitIp !== undefined && r.limitIp !== null) {
-        methods.setValue('limitIp', r.limitIp);
-      }
-      if (r.expiryTime !== undefined && r.expiryTime !== null) {
-        if (r.expiryTime < 0) {
-          // Tariff gave a delayed-start value — convert to a concrete future
-          // date so the UI always shows the Date picker, not the Days field.
-          // Use the client's active tariff startedAt when available; fall back
-          // to now when the tariff hasn't started yet (preview).
-          const startDate = client?.tariffStartedAt ?? Date.now();
-          const futureDate = startDate + Math.abs(r.expiryTime);
-          methods.setValue('delayedStart', false);
-          methods.setValue('delayedDays', 0);
-          methods.setValue('expiryDate', futureDate);
-        } else {
-          methods.setValue('delayedStart', false);
-          methods.setValue('delayedDays', 0);
-          methods.setValue('expiryDate', r.expiryTime > 0 ? r.expiryTime : 0);
-        }
-      }
-      if (r.inboundIds !== undefined && r.inboundIds !== null && r.inboundIds.length > 0) {
-        methods.setValue('inboundIds', [...r.inboundIds]);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [selectedGroup, methods, client, attachedIds]);
+    if (isFieldManaged('inbounds') && tariffValue.inboundIds.length > 0) {
+      methods.setValue('inboundIds', [...tariffValue.inboundIds]);
+    }
+  }, [tariffValue, isFieldManaged, methods, client]);
 
   const flowCapableIds = useMemo(() => {
     const ids = new Set<number>();
@@ -568,12 +594,6 @@ export default function ClientFormModal({
     }
   }
 
-  const tariffMode = useCallback((field: string): 'tariff' | 'override' | 'own' => {
-    if (!isManaged) return 'own';
-    if (fieldOverrideFree(field)) return 'tariff';
-    return 'override';
-  }, [isManaged, fieldOverrideFree]);
-
   async function onSubmit() {
     const values = methods.getValues();
     const schema = isEdit ? ClientFormSchema : ClientCreateFormSchema;
@@ -633,7 +653,11 @@ export default function ClientFormModal({
       limitIpMode: limitIPMode,
       expiryTime,
       expiryTimeMode,
+      inboundsMode,
     };
+    if (inboundsMode === 'override') {
+      (clientPayload as Record<string, unknown>).overrideInboundIds = values.inboundIds;
+    }
     const reverseTagValue = showReverseTag ? (values.reverseTag || '').trim() : '';
     if (reverseTagValue) {
       clientPayload.reverse = { tag: reverseTagValue };
@@ -672,23 +696,13 @@ export default function ClientFormModal({
     try {
       let msg;
       if (isEdit && client) {
-        const { toOverride, toReturn } = computeDiff();
-        for (const field of toOverride) {
-          await HttpUtil.post('/panel/api/clients/overrideField', {
-            email: client.email,
-            field,
-          }, JSON_HEADERS);
-        }
-        for (const field of toReturn) {
-          await HttpUtil.post('/panel/api/clients/returnToTariff', {
-            email: client.email,
-            field,
-          }, JSON_HEADERS);
-        }
-        // Attach/detach only when inbounds are NOT tariff-managed.
+        await submitFieldOps(client.email);
+        // Attach/detach only when inbounds are own-managed (no tariff, or override).
+        // Also skip when detaching from a tariff group — own inbounds must stay.
         const original = new Set(attachedIds || []);
         const next = new Set(values.inboundIds || []);
-        const skipInboundSync = inboundsMode === 'tariff';
+        const isDetachingFromGroup = !!client?.group && !values.group;
+        const skipInboundSync = inboundsMode !== 'own' || isDetachingFromGroup;
         const toAttach = skipInboundSync ? [] : [...next].filter((id) => !original.has(id));
         const toDetach = skipInboundSync ? [] : [...original].filter((id) => !next.has(id));
         msg = await save(clientPayload, {
@@ -787,15 +801,17 @@ export default function ClientFormModal({
                             <ManagedField
                               managed={isFieldManaged('totalGB')}
                               tariffName={tariffName}
-                              onMakeLocal={() => makeLocal('totalGB')}
+                              onMakeLocal={() => handleMakeLocal('totalGB')}
                             >
-                              <InputNumber min={0} step={1} style={{ width: '100%' }}
+                              <InputNumber
+                                key={String(isFieldManaged('totalGB'))}
+                                min={0} step={1} style={{ width: '100%' }}
                                 value={totalGB}
                                 disabled={isFieldManaged('totalGB')}
                                 onChange={(v) => methods.setValue('totalGB', Number(v) || 0)} />
                             </ManagedField>
                             {isManaged && !isFieldManaged('totalGB') && (
-                              <Button size="small" type="link" onClick={() => returnToTariff('totalGB')}>
+                              <Button size="small" type="link" onClick={() => handleReturnToTariff('totalGB')}>
                                 {t('pages.clients.returnToTariff')}
                               </Button>
                             )}
@@ -818,9 +834,11 @@ export default function ClientFormModal({
                                   <ManagedField
                                     managed={isFieldManaged('limitIP')}
                                     tariffName={tariffName}
-                                    onMakeLocal={() => makeLocal('limitIP')}
+                                    onMakeLocal={() => handleMakeLocal('limitIP')}
                                   >
-                                    <InputNumber value={limitIp} min={0} disabled={limitIpDisabled || isFieldManaged('limitIP')}
+                                    <InputNumber
+                                      key={String(isFieldManaged('limitIP'))}
+                                      value={limitIp} min={0} disabled={limitIpDisabled || isFieldManaged('limitIP')}
                                       style={{ flex: 1 }}
                                       onChange={(v) => methods.setValue('limitIp', Number(v) || 0)} />
                                   </ManagedField>
@@ -835,7 +853,7 @@ export default function ClientFormModal({
                               </span>
                             </Tooltip>
                             {isManaged && !isFieldManaged('limitIP') && (
-                              <Button size="small" type="link" onClick={() => returnToTariff('limitIP')}>
+                              <Button size="small" type="link" onClick={() => handleReturnToTariff('limitIP')}>
                                 {t('pages.clients.returnToTariff')}
                               </Button>
                             )}
@@ -860,9 +878,10 @@ export default function ClientFormModal({
                                   <ManagedField
                                     managed={expiryDisabled}
                                     tariffName={tariffName}
-                                    onMakeLocal={() => makeLocal('expiryTime')}
+                                    onMakeLocal={() => handleMakeLocal('expiryTime')}
                                   >
                                     <DateTimePicker
+                                      key={String(expiryDisabled)}
                                       value={expiryDayjs}
                                       onChange={(d) => methods.setValue('expiryDate', d ? d.valueOf() : 0)}
                                       disabled={expiryDisabled}
@@ -871,7 +890,7 @@ export default function ClientFormModal({
                                 </div>
                                 {isManaged && !isFieldManaged('expiryTime') && (
                                   <Tooltip title={t('pages.clients.returnToTariffDesc', { field: t('pages.clients.expireDays') })}>
-                                    <Button size="small" type="link" onClick={() => returnToTariff('expiryTime')}>
+                                    <Button size="small" type="link" onClick={() => handleReturnToTariff('expiryTime')}>
                                       {t('pages.clients.returnToTariff')}
                                     </Button>
                                   </Tooltip>
@@ -976,7 +995,7 @@ export default function ClientFormModal({
                         <ManagedField
                           managed={isFieldManaged('inbounds')}
                           tariffName={tariffName}
-                          onMakeLocal={() => makeLocal('inbounds')}
+                          onMakeLocal={() => handleMakeLocal('inbounds')}
                         >
                           <Select
                             key={String(isManaged)}
@@ -995,7 +1014,7 @@ export default function ClientFormModal({
                           />
                         </ManagedField>
                         {isManaged && !isFieldManaged('inbounds') && (
-                          <Button size="small" type="link" onClick={() => returnToTariff('inbounds')}>
+                          <Button size="small" type="link" onClick={() => handleReturnToTariff('inbounds')}>
                             {t('pages.clients.returnToTariff')}
                           </Button>
                         )}

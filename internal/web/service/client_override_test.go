@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -315,4 +316,84 @@ func TestOverrideField_InboundsFlag(t *testing.T) {
 			t.Error("IsInboundsOverridden should be false after return")
 		}
 	})
+}
+
+func TestUpdate_OverrideInboundIds(t *testing.T) {
+	if err := database.InitDB(filepath.Join(t.TempDir(), "x-ui.db")); err != nil {
+		t.Fatalf("init db: %v", err)
+	}
+	t.Cleanup(func() { _ = database.CloseDB() })
+
+	db := database.GetDB()
+
+	// Own inbounds for the client: [100]
+	profile := model.Profile{Name: "own-prof", InboundIds: "[100]"}
+	db.Create(&profile)
+	tariff := model.Tariff{Name: "ovr-t", InboundStrategy: model.StrategyOverwrite}
+	db.Create(&tariff)
+	db.Create(&model.TariffProfile{TariffID: tariff.Id, ProfileID: profile.Id, Position: 0})
+	group := model.ClientGroup{Name: "ovr-group", TariffID: &tariff.Id}
+	db.Create(&group)
+
+	client := model.ClientRecord{Email: "ovr@x.com", Group: "ovr-group"}
+	db.Create(&client)
+	db.Create(&model.ClientInbound{ClientId: client.Id, InboundId: 1}) // own inbound
+	db.Create(&model.ClientTariff{ClientID: client.Id, TariffID: tariff.Id, StartedAt: int64(1700000000000)})
+
+	tariffSvc := &ClientTariffService{}
+
+	// Step 1: OverrideField stores TARIFF-resolved value.
+	tariffSvc.OverrideField("ovr@x.com", "inbounds")
+
+	// Step 2: Simulate Update with user's OverrideInboundIds.
+	updated := model.Client{
+		InboundsMode:       model.FieldModeOverride,
+		OverrideInboundIds: []int{5, 6},
+	}
+	active := getActiveClientTariff(db, client.Id)
+	if active == nil {
+		t.Fatal("expected active CT row")
+	}
+	if updated.InboundsMode == model.FieldModeOverride && active != nil {
+		idsJSON, _ := json.Marshal(updated.OverrideInboundIds)
+		db.Model(&model.ClientTariff{}).Where("id = ?", active.ID).Updates(map[string]any{
+			"is_inbounds_overridden": true,
+			"inbound_ids_override":   string(idsJSON),
+		})
+	}
+
+	// Step 3: Verify CT row has user's override IDs.
+	var ct model.ClientTariff
+	db.Where("client_id = ? AND ended_at IS NULL", client.Id).First(&ct)
+	if !ct.IsInboundsOverridden {
+		t.Fatal("IsInboundsOverridden should be true")
+	}
+	if ct.InboundIDsOverride == nil {
+		t.Fatal("InboundIDsOverride should not be nil")
+	}
+	if *ct.InboundIDsOverride != "[5,6]" {
+		t.Fatalf("InboundIDsOverride = %q, want %q", *ct.InboundIDsOverride, "[5,6]")
+	}
+
+	// Step 4: ResolveClientFields must return override IDs, not own [1] or tariff [100].
+	resolved := ResolveClientFields(db, &ct, &client)
+	if len(resolved.InboundIds) != 2 || resolved.InboundIds[0] != 5 || resolved.InboundIds[1] != 6 {
+		t.Fatalf("resolved.InboundIds = %v, want [5, 6]", resolved.InboundIds)
+	}
+
+	// Step 5: GetEffective must also return override IDs.
+	var clientSvc ClientService
+	eff, err := clientSvc.GetEffective(db, "ovr@x.com")
+	if err != nil {
+		t.Fatalf("GetEffective: %v", err)
+	}
+	if eff == nil {
+		t.Fatal("GetEffective returned nil")
+	}
+	if !eff.IsInboundsOverridden {
+		t.Error("IsInboundsOverridden should be true")
+	}
+	if len(eff.ResolvedInboundIds) != 2 || eff.ResolvedInboundIds[0] != 5 || eff.ResolvedInboundIds[1] != 6 {
+		t.Fatalf("eff.ResolvedInboundIds = %v, want [5, 6]", eff.ResolvedInboundIds)
+	}
 }

@@ -39,9 +39,9 @@ export function useTariffOverrides(client: UseTariffOverridesInput | null | unde
   const effQuery = useQuery({
     queryKey: ['clientEffective', email],
     queryFn: async () => {
-      const res = await HttpUtil.get(`/panel/api/client/get/effective/${encodeURIComponent(email)}`);
-      if (!res || (typeof res === 'object' && Object.keys(res).length === 0)) return null;
-      return res as ClientEffectiveData;
+      const res = await HttpUtil.get(`/panel/api/clients/get/effective/${encodeURIComponent(email)}`);
+      if (!res?.success || !res.obj) return null;
+      return res.obj as ClientEffectiveData;
     },
     enabled: isEdit && hasTariff && !!email && open,
     staleTime: 30_000,
@@ -106,5 +106,5 @@ export function useTariffOverrides(client: UseTariffOverridesInput | null | unde
     return { toOverride, toReturn };
   }, [clientOverrides, added, removed]);
 
-  return { isFieldManaged, makeLocal, returnToTariff, computeDiff };
+  return { isFieldManaged, makeLocal, returnToTariff, computeDiff, effectiveData: effQuery.data, effectiveQuery: effQuery };
 }

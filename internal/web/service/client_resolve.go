@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"sort"
 
@@ -210,6 +211,20 @@ func applyOverrides(active *model.ClientTariff, out *ResolvedClientFields) (gbOv
 	return
 }
 
+// parseInboundIDsOverride parses the inbound_ids_override JSON column.
+// Returns nil when the column is empty or unparseable.
+func parseInboundIDsOverride(active *model.ClientTariff) []int {
+	if active.InboundIDsOverride == nil || *active.InboundIDsOverride == "" {
+		return nil
+	}
+	var ids []int
+	if err := json.Unmarshal([]byte(*active.InboundIDsOverride), &ids); err != nil {
+		logger.Warningf("parseInboundIDsOverride: invalid JSON for client_tariff %d: %v", active.ID, err)
+		return nil
+	}
+	return ids
+}
+
 // ClientEffective is the response for GET /client/:email/effective. It
 // bundles the active tariff metadata, per-field override flags, and the
 // fully resolved values so the frontend can render the edit-form card with
@@ -409,14 +424,19 @@ func ResolveClientFields(db *gorm.DB, active *model.ClientTariff, client *model.
 	applyOverrides(active, &out)
 
 	ctx, chain := resolveTariffChain(db, active, client, &out)
+
+	inboundsOverridden := active != nil && active.IsInboundsOverridden
+	if inboundsOverridden {
+		if ids := parseInboundIDsOverride(active); ids != nil {
+			out.InboundIds = ids
+		}
+		return out
+	}
 	if ctx == nil {
 		return out
 	}
 
-	inboundsOverridden := active != nil && active.IsInboundsOverridden
-	if inboundsOverridden {
-		out.InboundIds = ownIds
-	} else if ctx.Tariff.InboundStrategy == model.StrategyUnion {
+	if ctx.Tariff.InboundStrategy == model.StrategyUnion {
 		out.InboundIds = MergeInboundIds(ownIds, chain.InboundIds)
 	} else {
 		out.InboundIds = chain.InboundIds

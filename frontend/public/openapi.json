@@ -1052,7 +1052,9 @@
             "format": "int64",
             "type": "integer"
           },
-          "expiryTimeMode": {},
+          "expiryTimeMode": {
+            "type": "string"
+          },
           "flow": {
             "description": "Flow control (XTLS)",
             "type": "string"
@@ -1072,7 +1074,9 @@
             "description": "IP limit for this client",
             "type": "integer"
           },
-          "limitIpMode": {},
+          "limitIpMode": {
+            "type": "string"
+          },
           "password": {
             "description": "Client password",
             "type": "string"
@@ -1120,7 +1124,9 @@
             "format": "int64",
             "type": "integer"
           },
-          "totalGBMode": {},
+          "totalGBMode": {
+            "type": "string"
+          },
           "updated_at": {
             "description": "Last update timestamp",
             "format": "int64",

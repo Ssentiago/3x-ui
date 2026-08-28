@@ -154,22 +154,6 @@ func (a *GroupController) rename(c *gin.Context) {
 				db.Create(&newCTs)
 			}
 		}
-		// Live-apply tariff inbound list for each client in the group.
-		var ibs service.InboundService
-		var recs []model.ClientRecord
-		db.Where("group_name = ?", body.NewName).Find(&recs)
-		recIds := make([]int, len(recs))
-		for i := range recs {
-			recIds[i] = recs[i].Id
-		}
-		activeCT := service.GetActiveClientTariffMap(db, recIds)
-		for i := range recs {
-			resolved := service.ResolveClientFields(nil, activeCT[recs[i].Id], &recs[i])
-			if len(resolved.InboundIds) > 0 {
-				var cts service.ClientTariffService
-				cts.ApplyInboundList(&recs[i], resolved.InboundIds, &ibs)
-			}
-		}
 		a.tariffService.RefreshTrafficForGroup(body.NewName)
 	} else {
 		a.tariffService.RefreshTrafficForGroupReset(body.NewName)
@@ -268,20 +252,6 @@ func (a *GroupController) bulkAdd(c *gin.Context) {
 	var grp model.ClientGroup
 	if err := db.Where("name = ?", req.Group).First(&grp).Error; err == nil && grp.TariffID != nil {
 		a.tariffService.RefreshTrafficForGroup(req.Group)
-		// Live-apply tariff inbound list for each client.
-		var ibs service.InboundService
-		for _, email := range req.Emails {
-			var rec model.ClientRecord
-			if err := db.Where("email = ?", email).First(&rec).Error; err != nil {
-				continue
-			}
-			rec.Group = req.Group
-			resolved := service.ResolveClientFields(nil, nil, &rec)
-			if len(resolved.InboundIds) > 0 {
-				var cts service.ClientTariffService
-				cts.ApplyInboundList(&rec, resolved.InboundIds, &ibs)
-			}
-		}
 	}
 	jsonObj(c, gin.H{}, nil)
 	a.xrayService.SetToNeedRestart()
@@ -440,6 +410,7 @@ func (a *GroupController) overrideField(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	logger.Infof("🔴 overrideField: email=%q field=%q", body.Email, body.Field)
 	if err := a.clientTariffService.OverrideField(body.Email, body.Field); err != nil {
 		if errors.Is(err, service.ErrNoActiveTariff) {
 			jsonMsg(c, I18nWeb(c, "pages.clients.noActiveTariff"), err)
@@ -463,6 +434,7 @@ func (a *GroupController) returnToTariff(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	logger.Infof("🔴 returnToTariff: email=%q field=%q", body.Email, body.Field)
 	if err := a.clientTariffService.ReturnToTariff(body.Email, body.Field); err != nil {
 		if errors.Is(err, service.ErrNoActiveTariff) {
 			jsonMsg(c, I18nWeb(c, "pages.clients.noActiveTariff"), err)
@@ -472,8 +444,5 @@ func (a *GroupController) returnToTariff(c *gin.Context) {
 		return
 	}
 	jsonMsg(c, I18nWeb(c, "saveSuccess"), nil)
-	if body.Field == "inbounds" {
-		a.xrayService.SetToNeedRestart()
-	}
 	notifyClientsChanged()
 }

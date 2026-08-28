@@ -97,11 +97,11 @@ export default function TariffFormModal({
   const { data: resolved = { trafficBytes: 0, expiryDays: 0, limitIp: 0, inboundIds: [] as number[], trafficSource: '', expirySource: '', ipSource: '', inboundSource: '' } } = useQuery({
     queryKey: ['tariffChainPreview', chain, trafficStrategy, inboundStrategy],
     queryFn: async () => {
-      const msg = await HttpUtil.post('/panel/api/tariffs/preview', {
+      const msg = await HttpUtil.post('/panel/api/clients/tariffs/preview', {
         profiles: chain,
         trafficStrategy,
         inboundStrategy,
-      });
+      }, { headers: { 'Content-Type': 'application/json' } });
       return msg?.obj as ResolvedPreview;
     },
     enabled: chain.length > 0,
@@ -190,7 +190,7 @@ export default function TariffFormModal({
             <Input placeholder={t('pages.tariffs.namePlaceholder')} disabled={readonly} />
           </FormField>
 
-          {editingTariff && (editingTariff.groupCount || 0) > 0 && (
+          {!readonly && editingTariff && (editingTariff.groupCount || 0) > 0 && (
             <div
               style={{
                 background: 'var(--ant-color-warning-bg)',
@@ -279,10 +279,16 @@ export default function TariffFormModal({
                   if (item.traffic != null) labels.push(`${item.traffic} GB`);
                   if (item.expiryDays != null) labels.push(`${item.expiryDays}d`);
                   if (item.limitIp != null) labels.push(`${item.limitIp} IP`);
-                  if (item.inboundIds.length > 0) labels.push(item.inboundIds.length === 1
-                    ? (inboundLabelById.get(item.inboundIds[0]) || `#${item.inboundIds[0]}`)
-                    : `${item.inboundIds.length} inbounds`);
+                  const inboundNames = item.inboundIds.map((id) => inboundLabelById.get(id) || `#${id}`);
+                  if (inboundNames.length === 1) {
+                    labels.push(inboundNames[0]);
+                  } else if (inboundNames.length === 2) {
+                    labels.push(inboundNames.join(', '));
+                  } else if (inboundNames.length > 2) {
+                    labels.push(`${inboundNames.slice(0, 2).join(', ')} +${inboundNames.length - 2}`);
+                  }
                   const summary = labels.length > 0 ? labels.join(', ') : '—';
+                  const tooltip = inboundNames.length > 2 ? inboundNames.join('\n') : summary;
                   return (
                     <div key={i}
                       style={{
@@ -293,7 +299,7 @@ export default function TariffFormModal({
                     >
                       <Typography.Text type="secondary" style={{ width: 24, flexShrink: 0 }}>{i}</Typography.Text>
                       <Typography.Text strong style={{ width: 140, flexShrink: 0 }}>{item.name}</Typography.Text>
-                      <Tooltip title={summary}>
+                      <Tooltip title={<div style={{ whiteSpace: 'pre-line' }}>{tooltip}</div>}>
                         <Typography.Text type="secondary" style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                           {summary}
                         </Typography.Text>
