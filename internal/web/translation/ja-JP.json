@@ -1047,7 +1047,25 @@
       "removeFromGroup": "クライアントを削除…",
       "removeFromGroupTitle": "グループ「{name}」からクライアントを削除",
       "removeFromGroupDesc": "このグループから外すメンバーを選択してください。クライアント自体は保持されます (完全に削除するには「グループのクライアントを削除」を使用)。",
-      "removeFromGroupResult": "{count} クライアントを {name} から外しました。"
+      "removeFromGroupResult": "{count} クライアントを {name} から外しました。",
+      "groupDetail": "グループ: {name}",
+      "clientsTitle": "クライアント",
+      "exception": "例外",
+      "included": "含まれる",
+      "addException": "例外を追加",
+      "removeException": "例外を削除",
+      "currentExceptions": "現在の例外",
+      "applyPolicy": "ポリシーを適用",
+      "selectPolicy": "ポリシーを選択",
+      "preview": "プレビュー",
+      "apply": "適用",
+      "field": "フィールド",
+      "previewSummary": "{total}件中{changed}件のクライアントが変更されます（{skipped}件スキップ）",
+      "previewNoChanges": "変更なし — すべてのクライアントは既にポリシーに一致しています",
+      "applySuccess": "ポリシーを適用しました：{total}件中{changed}件のクライアントを更新",
+      "confirmApply": "ポリシーを適用しますか？",
+      "confirmApplyDesc": "グループ{group}の{count}件のクライアントを更新します。この操作は元に戻せません。",
+      "tabGroups": "グループ"
     },
     "nodes": {
       "addNode": "ノードを追加",
@@ -2426,6 +2444,22 @@
       "visit": "訪問",
       "yourBrand": "ここにあなたのブランドを",
       "yourBrandText": "毎日 3X-UI を開く何千人ものサーバー管理者に御社をアピールできます。"
+    },
+    "policies": {
+      "tabPolicies": "ポリシー",
+      "name": "名前",
+      "trafficGB": "トラフィック (GB)",
+      "expiryDays": "有効期限（日）",
+      "limitIp": "IP制限",
+      "inboundIds": "インバウンド",
+      "unmanaged": "未設定",
+      "addPolicy": "ポリシーを追加",
+      "editPolicy": "ポリシーを編集",
+      "nullHint": "空にすると無制限/無期限",
+      "inboundIdsHint": "カンマ区切りのインバウンドID。空=管理対象外",
+      "days": "日",
+      "inboundsHint": "空にすると適用時にインバウンドをスキップします",
+      "namePlaceholder": "例: ゴールド"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Xrayサービスを再起動",
     "restartXraySuccess": "Xrayサービスが正常に再起動されました",
     "settings": "設定"
-  }
+  },
+  "required": "必須",
+  "deleteSuccess": "削除しました",
+  "saveSuccess": "保存しました"
 }

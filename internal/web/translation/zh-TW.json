@@ -1047,7 +1047,25 @@
       "removeFromGroup": "移除客戶端…",
       "removeFromGroupTitle": "從群組「{name}」移除客戶端",
       "removeFromGroupDesc": "選擇要從此群組移除的成員。客戶端本身保留(用「刪除群組中的客戶端」完全移除)。",
-      "removeFromGroupResult": "已從 {name} 移除 {count} 個客戶端。"
+      "removeFromGroupResult": "已從 {name} 移除 {count} 個客戶端。",
+      "groupDetail": "群組：{name}",
+      "clientsTitle": "客戶端",
+      "exception": "例外",
+      "included": "已包含",
+      "addException": "新增例外",
+      "removeException": "移除例外",
+      "currentExceptions": "目前例外",
+      "applyPolicy": "套用策略",
+      "selectPolicy": "選擇策略",
+      "preview": "預覽",
+      "apply": "套用",
+      "field": "欄位",
+      "previewSummary": "{total} 個客戶端中有 {changed} 個將被修改（略過 {skipped} 個）",
+      "previewNoChanges": "無變更 — 所有客戶端已符合策略",
+      "applySuccess": "策略已套用：{total} 個客戶端中已更新 {changed} 個",
+      "confirmApply": "套用策略？",
+      "confirmApplyDesc": "這將更新群組 {group} 中的 {count} 個客戶端。此操作無法復原。",
+      "tabGroups": "群組"
     },
     "nodes": {
       "addNode": "新增節點",
@@ -2426,6 +2444,22 @@
       "visit": "造訪",
       "yourBrand": "您的品牌展示位",
       "yourBrandText": "讓每天打開 3X-UI 的數千名伺服器管理員看到您的公司。"
+    },
+    "policies": {
+      "tabPolicies": "策略",
+      "name": "名稱",
+      "trafficGB": "流量 (GB)",
+      "expiryDays": "有效期（天）",
+      "limitIp": "IP 限制",
+      "inboundIds": "入站",
+      "unmanaged": "未設定",
+      "addPolicy": "新增策略",
+      "editPolicy": "編輯策略",
+      "nullHint": "留空表示不限/無期限",
+      "inboundIdsHint": "以逗號分隔的入站 ID。留空 = 不管理",
+      "days": "天",
+      "inboundsHint": "留空則套用時略過入站",
+      "namePlaceholder": "例如：黃金"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "重啟 Xray 服務",
     "restartXraySuccess": "Xray 服務已成功重啟",
     "settings": "設定"
-  }
+  },
+  "required": "必填",
+  "deleteSuccess": "刪除成功",
+  "saveSuccess": "儲存成功"
 }

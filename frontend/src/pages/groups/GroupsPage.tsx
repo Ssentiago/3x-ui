@@ -1,5 +1,6 @@
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import {
   Button,
   Card,
@@ -16,6 +17,7 @@ import {
   Spin,
   Statistic,
   Table,
+  Tabs,
   Tag,
   Tooltip,
   message,
@@ -32,6 +34,7 @@ import {
   PieChartOutlined,
   PlusOutlined,
   RetweetOutlined,
+  SettingOutlined,
   TagsOutlined,
   TeamOutlined,
   UsergroupAddOutlined,
@@ -66,6 +69,8 @@ const SubLinksModal = lazy(() => import('../clients/SubLinksModal'));
 const ClientBulkAdjustModal = lazy(() => import('../clients/ClientBulkAdjustModal'));
 const GroupAddClientsModal = lazy(() => import('./GroupAddClientsModal'));
 const GroupRemoveClientsModal = lazy(() => import('./GroupRemoveClientsModal'));
+const GroupDetailModal = lazy(() => import('./GroupDetailModal'));
+const PoliciesTab = lazy(() => import('./PoliciesTab'));
 
 const JSON_HEADERS = { headers: { 'Content-Type': 'application/json' } } as const;
 
@@ -160,6 +165,9 @@ export default function GroupsPage() {
   const [removeClientsOpen, setRemoveClientsOpen] = useState(false);
   const [groupEmails, setGroupEmails] = useState<string[]>([]);
   const [groupForAction, setGroupForAction] = useState<GroupSummary | null>(null);
+  const [detailGroup, setDetailGroup] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') === 'policies' ? 'policies' : 'groups';
 
   const allClientsQuery = useQuery<ClientRecord[]>({
     queryKey: keys.clients.all(),
@@ -415,7 +423,7 @@ export default function GroupsPage() {
     {
       title: t('pages.clients.actions'),
       key: 'actions',
-      width: 90,
+      width: 120,
       render: (_v, row) => (
         <Space size={4}>
           <Dropdown trigger={['click']} menu={{ items: rowActions(row) }}>
@@ -435,6 +443,16 @@ export default function GroupsPage() {
               style={{ fontSize: 16 }}
               icon={<EditOutlined />}
               onClick={() => openRename(row)}
+            />
+          </Tooltip>
+          <Tooltip title={t('pages.groups.groupDetail', { name: row.name })}>
+            <Button
+              aria-label={t('pages.groups.groupDetail', { name: row.name })}
+              size="small"
+              type="text"
+              style={{ fontSize: 16 }}
+              icon={<SettingOutlined />}
+              onClick={() => setDetailGroup(row.name)}
             />
           </Tooltip>
         </Space>
@@ -510,84 +528,111 @@ export default function GroupsPage() {
                   }
                 />
               ) : (
-                <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 12]}>
-                  <Col span={24}>
-                    <Card size="small" hoverable className="summary-card">
-                      <Row gutter={[16, isMobile ? 16 : 12]}>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.groups.totalGroups')}
-                            value={String(totalGroups)}
-                            prefix={<TagsOutlined />}
-                          />
-                        </Col>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.groups.totalGroupedClients')}
-                            value={String(totalClients)}
-                            prefix={<TeamOutlined />}
-                          />
-                        </Col>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.groups.totalUpDown')}
-                            value={0}
-                            formatter={() => (
-                              <span>
-                                <ArrowUpOutlined /> {SizeFormatter.sizeFormat(totalUpload)}
-                                {' / '}
-                                <ArrowDownOutlined /> {SizeFormatter.sizeFormat(totalDownload)}
-                              </span>
-                            )}
-                          />
-                        </Col>
-                        <Col xs={12} sm={12} md={6}>
-                          <Statistic
-                            title={t('pages.groups.totalTraffic')}
-                            value={SizeFormatter.sizeFormat(totalTraffic)}
-                            prefix={<PieChartOutlined />}
-                          />
-                        </Col>
-                      </Row>
-                    </Card>
-                  </Col>
+                <Tabs
+                  activeKey={activeTab}
+                  onChange={(key) => {
+                    const next = new URLSearchParams(searchParams);
+                    if (key === 'policies') next.set('tab', 'policies');
+                    else next.delete('tab');
+                    setSearchParams(next, { replace: true });
+                  }}
+                  items={[
+                    {
+                      key: 'groups',
+                      label: t('pages.groups.tabGroups'),
+                      children: (
+                        <Row gutter={[isMobile ? 8 : 16, isMobile ? 8 : 12]}>
+                          <Col span={24}>
+                            <Card size="small" hoverable className="summary-card">
+                              <Row gutter={[16, isMobile ? 16 : 12]}>
+                                <Col xs={12} sm={12} md={6}>
+                                  <Statistic
+                                    title={t('pages.groups.totalGroups')}
+                                    value={String(totalGroups)}
+                                    prefix={<TagsOutlined />}
+                                  />
+                                </Col>
+                                <Col xs={12} sm={12} md={6}>
+                                  <Statistic
+                                    title={t('pages.groups.totalGroupedClients')}
+                                    value={String(totalClients)}
+                                    prefix={<TeamOutlined />}
+                                  />
+                                </Col>
+                                <Col xs={12} sm={12} md={6}>
+                                  <Statistic
+                                    title={t('pages.groups.totalUpDown')}
+                                    value={0}
+                                    formatter={() => (
+                                      <span>
+                                        <ArrowUpOutlined /> {SizeFormatter.sizeFormat(totalUpload)}
+                                        {' / '}
+                                        <ArrowDownOutlined />{' '}
+                                        {SizeFormatter.sizeFormat(totalDownload)}
+                                      </span>
+                                    )}
+                                  />
+                                </Col>
+                                <Col xs={12} sm={12} md={6}>
+                                  <Statistic
+                                    title={t('pages.groups.totalTraffic')}
+                                    value={SizeFormatter.sizeFormat(totalTraffic)}
+                                    prefix={<PieChartOutlined />}
+                                  />
+                                </Col>
+                              </Row>
+                            </Card>
+                          </Col>
 
-                  <Col span={24}>
-                    <Card
-                      size="small"
-                      hoverable
-                      title={
-                        <div className="card-toolbar">
-                          <Button
-                            aria-label={t('pages.groups.addGroup')}
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={openCreate}
-                          >
-                            {!isMobile && t('pages.groups.addGroup')}
-                          </Button>
-                        </div>
-                      }
-                    >
-                      <Table<GroupSummary>
-                        dataSource={groups}
-                        columns={columns}
-                        rowKey="name"
-                        size="small"
-                        pagination={false}
-                        loading={loading}
-                        locale={{
-                          emptyText: (
-                            <div className="card-empty">
-                              <TagsOutlined style={{ fontSize: 32, marginBottom: 8 }} />
-                              <div>{t('noData')}</div>
-                            </div>
-                          ),
-                        }}
-                      />
-                    </Card>
-                  </Col>
-                </Row>
+                          <Col span={24}>
+                            <Card
+                              size="small"
+                              hoverable
+                              title={
+                                <div className="card-toolbar">
+                                  <Button
+                                    aria-label={t('pages.groups.addGroup')}
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={openCreate}
+                                  >
+                                    {!isMobile && t('pages.groups.addGroup')}
+                                  </Button>
+                                </div>
+                              }
+                            >
+                              <Table<GroupSummary>
+                                dataSource={groups}
+                                columns={columns}
+                                rowKey="name"
+                                size="small"
+                                pagination={false}
+                                loading={loading}
+                                locale={{
+                                  emptyText: (
+                                    <div className="card-empty">
+                                      <TagsOutlined style={{ fontSize: 32, marginBottom: 8 }} />
+                                      <div>{t('noData')}</div>
+                                    </div>
+                                  ),
+                                }}
+                              />
+                            </Card>
+                          </Col>
+                        </Row>
+                      ),
+                    },
+                    {
+                      key: 'policies',
+                      label: t('pages.policies.tabPolicies'),
+                      children: (
+                        <Suspense fallback={<Spin />}>
+                          <PoliciesTab />
+                        </Suspense>
+                      ),
+                    },
+                  ]}
+                />
               )}
             </Spin>
           </Layout.Content>
@@ -701,6 +746,16 @@ export default function GroupsPage() {
               return null;
             }}
           />
+        </LazyMount>
+
+        <LazyMount when={!!detailGroup}>
+          {detailGroup && (
+            <GroupDetailModal
+              open={!!detailGroup}
+              groupName={detailGroup}
+              onClose={() => setDetailGroup(null)}
+            />
+          )}
         </LazyMount>
       </Layout>
     </ConfigProvider>

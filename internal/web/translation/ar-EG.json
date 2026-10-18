@@ -1047,7 +1047,25 @@
       "removeFromGroup": "إزالة عملاء…",
       "removeFromGroupTitle": "إزالة عملاء من المجموعة «{name}»",
       "removeFromGroupDesc": "اختر الأعضاء لإزالتهم من هذه المجموعة. يُحفظ العملاء (استخدم «حذف عملاء المجموعة» للإزالة الكاملة).",
-      "removeFromGroupResult": "تمت إزالة {count} عميل من {name}."
+      "removeFromGroupResult": "تمت إزالة {count} عميل من {name}.",
+      "groupDetail": "المجموعة: {name}",
+      "clientsTitle": "العملاء",
+      "exception": "استثناء",
+      "included": "مُدرَج",
+      "addException": "إضافة استثناء",
+      "removeException": "إزالة استثناء",
+      "currentExceptions": "الاستثناءات الحالية",
+      "applyPolicy": "تطبيق السياسة",
+      "selectPolicy": "اختر السياسة",
+      "preview": "معاينة",
+      "apply": "تطبيق",
+      "field": "حقل",
+      "previewSummary": "سيتم تغيير {changed} من {total} عميل ({skipped} تم تخطيهم)",
+      "previewNoChanges": "لا تغييرات — جميع العملاء يطابقون السياسة بالفعل",
+      "applySuccess": "تم تطبيق السياسة: تم تحديث {changed} من {total} عميل",
+      "confirmApply": "تطبيق السياسة؟",
+      "confirmApplyDesc": "سيؤدي هذا إلى تحديث {count} عميل في المجموعة {group}. لا يمكن التراجع عن هذا الإجراء.",
+      "tabGroups": "المجموعات"
     },
     "nodes": {
       "addNode": "إضافة نود",
@@ -2426,6 +2444,22 @@
       "visit": "زيارة",
       "yourBrand": "علامتك التجارية هنا",
       "yourBrandText": "ضع شركتك أمام آلاف مسؤولي الخوادم الذين يفتحون 3X-UI كل يوم."
+    },
+    "policies": {
+      "tabPolicies": "السياسات",
+      "name": "الاسم",
+      "trafficGB": "حركة البيانات (جيجابايت)",
+      "expiryDays": "الصلاحية (أيام)",
+      "limitIp": "حد IP",
+      "inboundIds": "الواردات",
+      "unmanaged": "غير محدد",
+      "addPolicy": "إضافة سياسة",
+      "editPolicy": "تعديل السياسة",
+      "nullHint": "اتركه فارغًا لغير محدود / بدون صلاحية",
+      "inboundIdsHint": "معرّفات الواردة مفصولة بفواصل. فارغ = غير مُدار",
+      "days": "أيام",
+      "inboundsHint": "اتركه فارغًا لتخطي الواردين عند التطبيق",
+      "namePlaceholder": "مثال: ذهبي"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "إعادة تشغيل خدمة Xray",
     "restartXraySuccess": "تمت إعادة تشغيل خدمة Xray بنجاح",
     "settings": "الإعدادات"
-  }
+  },
+  "required": "مطلوب",
+  "deleteSuccess": "تم الحذف بنجاح",
+  "saveSuccess": "تم الحفظ بنجاح"
 }

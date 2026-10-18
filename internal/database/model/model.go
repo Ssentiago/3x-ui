@@ -1013,6 +1013,33 @@ type ClientGroup struct {
 
 func (ClientGroup) TableName() string { return "client_groups" }
 
+// Policy is a named set of field values that can be explicitly applied to
+// clients in a group. NULL fields are skipped on apply (the client keeps
+// its own value).
+type Policy struct {
+	Id         int    `json:"id" gorm:"primaryKey;autoIncrement" example:"1"`
+	Name       string `json:"name" gorm:"uniqueIndex;not null" example:"Gold"`
+	TrafficGB  *int64 `json:"trafficGB" gorm:"column:traffic_gb" example:"50"`
+	ExpiryDays *int   `json:"expiryDays" gorm:"column:expiry_days" example:"30"`
+	LimitIP    *int   `json:"limitIp" gorm:"column:limit_ip" example:"3"`
+	InboundIds string `json:"inboundIds" gorm:"column:inbound_ids;default:null" example:"[1,2]"`
+	CreatedAt  int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+	UpdatedAt  int64  `json:"updatedAt" gorm:"autoUpdateTime:milli"`
+}
+
+func (Policy) TableName() string { return "policies" }
+
+// GroupException is a per-group exclusion: the client's email is skipped
+// when a policy is applied to the group.
+type GroupException struct {
+	Id        int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	GroupName string `json:"groupName" gorm:"column:group_name;uniqueIndex:idx_group_exception;not null"`
+	Email     string `json:"email" gorm:"column:email;uniqueIndex:idx_group_exception;not null"`
+	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+}
+
+func (GroupException) TableName() string { return "group_exceptions" }
+
 // MarshalJSON emits the reverse column as a nested JSON object rather than an
 // escaped JSON-text string, matching the same convention Inbound uses for its
 // JSON-text columns. Empty storage renders as null.

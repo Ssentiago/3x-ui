@@ -404,6 +404,34 @@ export const EXAMPLES: Record<string, unknown> = {
     "scope": "admin",
     "token": "new-token-string"
   },
+  "ApplyFieldChange": {
+    "email": "",
+    "field": "",
+    "newVal": "",
+    "oldVal": ""
+  },
+  "ApplyPreview": {
+    "changed": 0,
+    "changes": [
+      {
+        "email": "",
+        "field": "",
+        "newVal": "",
+        "oldVal": ""
+      }
+    ],
+    "fieldChanges": {},
+    "skipped": 0,
+    "totalClients": 0
+  },
+  "ApplyResult": {
+    "changed": 0,
+    "fieldChanges": {},
+    "inboundsAttached": 0,
+    "inboundsDetached": 0,
+    "skipped": 0,
+    "totalClients": 0
+  },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",
     "allowedIPs": [
@@ -661,6 +689,12 @@ export const EXAMPLES: Record<string, unknown> = {
     "file": "geosite.dat",
     "reason": "categoryMissing",
     "token": "geosite:blabla"
+  },
+  "GroupException": {
+    "createdAt": 0,
+    "email": "",
+    "groupName": "",
+    "id": 0
   },
   "HappLinkResult": {
     "encryptedLink": "happ://crypt5/example"
@@ -1023,6 +1057,37 @@ export const EXAMPLES: Record<string, unknown> = {
     "online": true,
     "tag": "inbound-51820",
     "up": 1048576
+  },
+  "Policy": {
+    "createdAt": 0,
+    "expiryDays": 30,
+    "id": 1,
+    "inboundIds": "[1,2]",
+    "limitIp": 3,
+    "name": "Gold",
+    "trafficGB": 50,
+    "updatedAt": 0
+  },
+  "PolicyInput": {
+    "expiryDays": null,
+    "inboundIds": [
+      0
+    ],
+    "limitIp": null,
+    "name": "",
+    "trafficGB": null
+  },
+  "PolicySummary": {
+    "createdAt": 0,
+    "expiryDays": null,
+    "id": 0,
+    "inboundIds": [
+      0
+    ],
+    "limitIp": null,
+    "name": "",
+    "trafficGB": null,
+    "updatedAt": 0
   },
   "ProbeResultUI": {
     "cpuPct": 12.5,

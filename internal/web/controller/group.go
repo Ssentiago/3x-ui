@@ -3,6 +3,7 @@ package controller
 import (
 	"strings"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 
@@ -29,6 +30,10 @@ func (a *GroupController) initRouter(g *gin.RouterGroup) {
 	g.POST("/groups/resetTraffic", a.resetTraffic)
 	g.POST("/groups/bulkAdd", a.bulkAdd)
 	g.POST("/groups/bulkRemove", a.bulkRemove)
+	g.GET("/groups/:name/exceptions", a.listExceptions)
+	g.POST("/groups/:name/exceptions/set", a.setExceptions)
+	g.POST("/groups/:name/exceptions/add", a.addException)
+	g.POST("/groups/:name/exceptions/remove", a.removeException)
 }
 
 func (a *GroupController) list(c *gin.Context) {
@@ -169,4 +174,68 @@ func (a *GroupController) bulkRemove(c *gin.Context) {
 	jsonObj(c, gin.H{"affected": affected}, nil)
 	a.xrayService.SetToNeedRestart()
 	notifyClientsChanged()
+}
+
+func (a *GroupController) listExceptions(c *gin.Context) {
+	name := c.Param("name")
+	db := database.GetDB()
+	emails, err := service.ListExceptions(db, name)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	jsonObj(c, emails, nil)
+}
+
+type setExceptionsRequest struct {
+	Emails []string `json:"emails"`
+}
+
+func (a *GroupController) setExceptions(c *gin.Context) {
+	name := c.Param("name")
+	var req setExceptionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	db := database.GetDB()
+	if err := service.SetExceptions(db, name, req.Emails); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	jsonObj(c, gin.H{"group": name, "count": len(req.Emails)}, nil)
+}
+
+type exceptionEmailRequest struct {
+	Email string `json:"email"`
+}
+
+func (a *GroupController) addException(c *gin.Context) {
+	name := c.Param("name")
+	var req exceptionEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	db := database.GetDB()
+	if err := service.AddException(db, name, req.Email); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	jsonObj(c, gin.H{"group": name, "email": req.Email}, nil)
+}
+
+func (a *GroupController) removeException(c *gin.Context) {
+	name := c.Param("name")
+	var req exceptionEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	db := database.GetDB()
+	if err := service.RemoveException(db, name, req.Email); err != nil {
+		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
+		return
+	}
+	jsonObj(c, gin.H{"group": name, "email": req.Email}, nil)
 }

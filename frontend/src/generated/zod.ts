@@ -423,6 +423,33 @@ export const ApiTokenViewSchema = z.object({
 });
 export type ApiTokenView = z.infer<typeof ApiTokenViewSchema>;
 
+export const ApplyFieldChangeSchema = z.object({
+  email: z.string(),
+  field: z.string(),
+  newVal: z.string(),
+  oldVal: z.string(),
+});
+export type ApplyFieldChange = z.infer<typeof ApplyFieldChangeSchema>;
+
+export const ApplyPreviewSchema = z.object({
+  changed: z.number().int(),
+  changes: z.array(z.lazy(() => ApplyFieldChangeSchema)),
+  fieldChanges: z.record(z.string(), z.number().int()),
+  skipped: z.number().int(),
+  totalClients: z.number().int(),
+});
+export type ApplyPreview = z.infer<typeof ApplyPreviewSchema>;
+
+export const ApplyResultSchema = z.object({
+  changed: z.number().int(),
+  fieldChanges: z.record(z.string(), z.number().int()),
+  inboundsAttached: z.number().int(),
+  inboundsDetached: z.number().int(),
+  skipped: z.number().int(),
+  totalClients: z.number().int(),
+});
+export type ApplyResult = z.infer<typeof ApplyResultSchema>;
+
 export const ClientSchema = z.object({
   adTag: z.string().optional(),
   allowedIPs: z.array(z.string()).optional(),
@@ -647,6 +674,14 @@ export const GeodataTokenIssueSchema = z.object({
   token: z.string(),
 });
 export type GeodataTokenIssue = z.infer<typeof GeodataTokenIssueSchema>;
+
+export const GroupExceptionSchema = z.object({
+  createdAt: z.number().int(),
+  email: z.string(),
+  groupName: z.string(),
+  id: z.number().int(),
+});
+export type GroupException = z.infer<typeof GroupExceptionSchema>;
 
 export const HappLinkResultSchema = z.object({
   encryptedLink: z.string(),
@@ -1001,6 +1036,39 @@ export const PeerActivitySchema = z.object({
   up: z.number().int(),
 });
 export type PeerActivity = z.infer<typeof PeerActivitySchema>;
+
+export const PolicySchema = z.object({
+  createdAt: z.number().int(),
+  expiryDays: z.number().int().nullable().optional(),
+  id: z.number().int(),
+  inboundIds: z.string(),
+  limitIp: z.number().int().nullable().optional(),
+  name: z.string(),
+  trafficGB: z.number().int().nullable().optional(),
+  updatedAt: z.number().int(),
+});
+export type Policy = z.infer<typeof PolicySchema>;
+
+export const PolicyInputSchema = z.object({
+  expiryDays: z.number().int().nullable().optional(),
+  inboundIds: z.array(z.number().int()),
+  limitIp: z.number().int().nullable().optional(),
+  name: z.string(),
+  trafficGB: z.number().int().nullable().optional(),
+});
+export type PolicyInput = z.infer<typeof PolicyInputSchema>;
+
+export const PolicySummarySchema = z.object({
+  createdAt: z.number().int(),
+  expiryDays: z.number().int().nullable().optional(),
+  id: z.number().int(),
+  inboundIds: z.array(z.number().int()),
+  limitIp: z.number().int().nullable().optional(),
+  name: z.string(),
+  trafficGB: z.number().int().nullable().optional(),
+  updatedAt: z.number().int(),
+});
+export type PolicySummary = z.infer<typeof PolicySummarySchema>;
 
 export const ProbeResultUISchema = z.object({
   cpuPct: z.number(),

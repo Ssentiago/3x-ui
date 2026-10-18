@@ -1047,7 +1047,25 @@
       "removeFromGroup": "Remove clients…",
       "removeFromGroupTitle": "Remove clients from group \"{name}\"",
       "removeFromGroupDesc": "Select members to remove from this group. Clients themselves are kept (use \"Delete clients in group\" to remove them entirely).",
-      "removeFromGroupResult": "Removed {count} client(s) from {name}."
+      "removeFromGroupResult": "Removed {count} client(s) from {name}.",
+      "groupDetail": "Group: {name}",
+      "clientsTitle": "Clients",
+      "exception": "Exception",
+      "included": "Included",
+      "addException": "Add exception",
+      "removeException": "Remove exception",
+      "currentExceptions": "Current exceptions",
+      "applyPolicy": "Apply policy",
+      "selectPolicy": "Select policy",
+      "preview": "Preview",
+      "apply": "Apply",
+      "field": "Field",
+      "previewSummary": "{changed} of {total} clients will change ({skipped} skipped)",
+      "previewNoChanges": "No changes — all clients already match the policy",
+      "applySuccess": "Policy applied: {changed} of {total} clients updated",
+      "confirmApply": "Apply policy?",
+      "confirmApplyDesc": "This will update {count} clients in group {group}. This action cannot be undone.",
+      "tabGroups": "Groups"
     },
     "hosts": {
       "addHost": "Add Host",
@@ -2426,6 +2444,22 @@
       "visit": "Visit",
       "yourBrand": "Your brand here",
       "yourBrandText": "Put your company in front of thousands of server admins who open 3X-UI every day."
+    },
+    "policies": {
+      "tabPolicies": "Policies",
+      "name": "Name",
+      "trafficGB": "Traffic (GB)",
+      "expiryDays": "Expiry (days)",
+      "limitIp": "IP limit",
+      "inboundIds": "Inbounds",
+      "unmanaged": "Not set",
+      "addPolicy": "Add policy",
+      "editPolicy": "Edit policy",
+      "nullHint": "Leave empty for unlimited / no expiry",
+      "inboundIdsHint": "Comma-separated inbound IDs. Empty = not managed",
+      "days": "days",
+      "inboundsHint": "Leave empty to skip inbounds on apply",
+      "namePlaceholder": "e.g. Gold"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Restart Xray Service",
     "restartXraySuccess": "Xray has been successfully relaunched",
     "settings": "Settings"
-  }
+  },
+  "required": "Required",
+  "deleteSuccess": "Deleted successfully",
+  "saveSuccess": "Saved successfully"
 }

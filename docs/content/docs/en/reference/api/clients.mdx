@@ -220,6 +220,50 @@ _openapi:
         client_groups row if the group exists only as a derived label.
       url: '#reset-only-the-group-level-traffic-counter-shown-on-the-groups-page-snapshots-the-current-updown-sum-of-the-groups-members-as-a-baseline-so-the-group-total-reads-zero-while-leaving-each-clients-own-counters-and-their-quotas-untouched-no-xray-restart-is-triggered-creates-the-client_groups-row-if-the-group-exists-only-as-a-derived-label'
     - depth: 2
+      title: List the per-group exception emails. Clients on this list are skipped
+        when a policy is applied to the group.
+      url: '#list-the-per-group-exception-emails-clients-on-this-list-are-skipped-when-a-policy-is-applied-to-the-group'
+    - depth: 2
+      title: Replace the full exception list for a group. Atomic delete-then-insert.
+        Passing an empty array clears all exceptions.
+      url: '#replace-the-full-exception-list-for-a-group-atomic-delete-then-insert-passing-an-empty-array-clears-all-exceptions'
+    - depth: 2
+      title: Add a single email to the group exception list. Idempotent — no error if
+        the email is already excluded.
+      url: '#add-a-single-email-to-the-group-exception-list-idempotent--no-error-if-the-email-is-already-excluded'
+    - depth: 2
+      title: Remove a single email from the group exception list.
+      url: '#remove-a-single-email-from-the-group-exception-list'
+    - depth: 2
+      title: List all policies. A policy is a named set of field values (trafficGB,
+        expiryDays, limitIP, inboundIds) that can be explicitly applied to a
+        group. NULL fields are skipped on apply.
+      url: '#list-all-policies-a-policy-is-a-named-set-of-field-values-trafficgb-expirydays-limitip-inboundids-that-can-be-explicitly-applied-to-a-group-null-fields-are-skipped-on-apply'
+    - depth: 2
+      title: Get one policy by id.
+      url: '#get-one-policy-by-id'
+    - depth: 2
+      title: Create a policy. Omit a field (or set it null) to leave it unmanaged.
+      url: '#create-a-policy-omit-a-field-or-set-it-null-to-leave-it-unmanaged'
+    - depth: 2
+      title: Update a policy. Fields set to null become unmanaged.
+      url: '#update-a-policy-fields-set-to-null-become-unmanaged'
+    - depth: 2
+      title: Delete a policy. Does not undo any previous apply.
+      url: '#delete-a-policy-does-not-undo-any-previous-apply'
+    - depth: 2
+      title: 'Dry-run: compute the effect of applying a policy to a group. Returns how
+        many clients would change, a per-field breakdown, and a per-client field
+        diff. Exception clients are counted as skipped. Nothing is written.'
+      url: '#dry-run-compute-the-effect-of-applying-a-policy-to-a-group-returns-how-many-clients-would-change-a-per-field-breakdown-and-a-per-client-field-diff-exception-clients-are-counted-as-skipped-nothing-is-written'
+    - depth: 2
+      title: Write a policy onto every non-excepted client of a group. Fields managed
+        by the policy are overwritten (traffic in bytes, expiry as now+days, IP
+        limit, inbound attachments via bulk attach/detach). Exception clients
+        are skipped. Returns a change report and triggers a Xray restart if
+        inbound attachments changed.
+      url: '#write-a-policy-onto-every-non-excepted-client-of-a-group-fields-managed-by-the-policy-are-overwritten-traffic-in-bytes-expiry-as-nowdays-ip-limit-inbound-attachments-via-bulk-attachdetach-exception-clients-are-skipped-returns-a-change-report-and-triggers-a-xray-restart-if-inbound-attachments-changed'
+    - depth: 2
       title: Zero out a single client’s up/down counters. Re-enables the client across
         every attached inbound and pushes the change to Xray (or the remote
         node) so depleted users can connect again immediately.
@@ -487,6 +531,40 @@ _openapi:
           Creates the client_groups row if the group exists only as a derived
           label.
         id: reset-only-the-group-level-traffic-counter-shown-on-the-groups-page-snapshots-the-current-updown-sum-of-the-groups-members-as-a-baseline-so-the-group-total-reads-zero-while-leaving-each-clients-own-counters-and-their-quotas-untouched-no-xray-restart-is-triggered-creates-the-client_groups-row-if-the-group-exists-only-as-a-derived-label
+      - content: List the per-group exception emails. Clients on this list are skipped
+          when a policy is applied to the group.
+        id: list-the-per-group-exception-emails-clients-on-this-list-are-skipped-when-a-policy-is-applied-to-the-group
+      - content: Replace the full exception list for a group. Atomic delete-then-insert.
+          Passing an empty array clears all exceptions.
+        id: replace-the-full-exception-list-for-a-group-atomic-delete-then-insert-passing-an-empty-array-clears-all-exceptions
+      - content: Add a single email to the group exception list. Idempotent — no error
+          if the email is already excluded.
+        id: add-a-single-email-to-the-group-exception-list-idempotent--no-error-if-the-email-is-already-excluded
+      - content: Remove a single email from the group exception list.
+        id: remove-a-single-email-from-the-group-exception-list
+      - content: List all policies. A policy is a named set of field values (trafficGB,
+          expiryDays, limitIP, inboundIds) that can be explicitly applied to a
+          group. NULL fields are skipped on apply.
+        id: list-all-policies-a-policy-is-a-named-set-of-field-values-trafficgb-expirydays-limitip-inboundids-that-can-be-explicitly-applied-to-a-group-null-fields-are-skipped-on-apply
+      - content: Get one policy by id.
+        id: get-one-policy-by-id
+      - content: Create a policy. Omit a field (or set it null) to leave it unmanaged.
+        id: create-a-policy-omit-a-field-or-set-it-null-to-leave-it-unmanaged
+      - content: Update a policy. Fields set to null become unmanaged.
+        id: update-a-policy-fields-set-to-null-become-unmanaged
+      - content: Delete a policy. Does not undo any previous apply.
+        id: delete-a-policy-does-not-undo-any-previous-apply
+      - content: 'Dry-run: compute the effect of applying a policy to a group. Returns
+          how many clients would change, a per-field breakdown, and a per-client
+          field diff. Exception clients are counted as skipped. Nothing is
+          written.'
+        id: dry-run-compute-the-effect-of-applying-a-policy-to-a-group-returns-how-many-clients-would-change-a-per-field-breakdown-and-a-per-client-field-diff-exception-clients-are-counted-as-skipped-nothing-is-written
+      - content: Write a policy onto every non-excepted client of a group. Fields
+          managed by the policy are overwritten (traffic in bytes, expiry as
+          now+days, IP limit, inbound attachments via bulk attach/detach).
+          Exception clients are skipped. Returns a change report and triggers a
+          Xray restart if inbound attachments changed.
+        id: write-a-policy-onto-every-non-excepted-client-of-a-group-fields-managed-by-the-policy-are-overwritten-traffic-in-bytes-expiry-as-nowdays-ip-limit-inbound-attachments-via-bulk-attachdetach-exception-clients-are-skipped-returns-a-change-report-and-triggers-a-xray-restart-if-inbound-attachments-changed
       - content: Zero out a single client’s up/down counters. Re-enables the client
           across every attached inbound and pushes the change to Xray (or the
           remote node) so depleted users can connect again immediately.
@@ -663,13 +741,11 @@ _openapi:
 {/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
 
 export default function Layout(props) {
-  const { APIPage, OpenAPIPage } = props.components ?? {};
-  // "APIPage" is the old name from v10, this allows both for backward compatibility
-  const Comp = OpenAPIPage ?? APIPage;
+  const { OpenAPIPage } = props.components ?? {};
   return (
     <>
       {props.children}
-      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/clients/list","method":"get"},{"path":"/panel/api/clients/list/paged","method":"get"},{"path":"/panel/api/clients/get/{email}","method":"get"},{"path":"/panel/api/clients/get/tgId/{tgId}","method":"get"},{"path":"/panel/api/clients/add","method":"post"},{"path":"/panel/api/clients/renewalPreview","method":"post"},{"path":"/panel/api/clients/update/{email}","method":"post"},{"path":"/panel/api/clients/del/{email}","method":"post"},{"path":"/panel/api/clients/{email}/attach","method":"post"},{"path":"/panel/api/clients/{email}/detach","method":"post"},{"path":"/panel/api/clients/{email}/externalLinks","method":"post"},{"path":"/panel/api/clients/resetAllTraffics","method":"post"},{"path":"/panel/api/clients/delDepleted","method":"post"},{"path":"/panel/api/clients/delOrphans","method":"post"},{"path":"/panel/api/clients/export","method":"get"},{"path":"/panel/api/clients/import","method":"post"},{"path":"/panel/api/clients/bulkAdjust","method":"post"},{"path":"/panel/api/clients/bulkEnable","method":"post"},{"path":"/panel/api/clients/bulkDisable","method":"post"},{"path":"/panel/api/clients/bulkDel","method":"post"},{"path":"/panel/api/clients/bulkCreate","method":"post"},{"path":"/panel/api/clients/groups/bulkAdd","method":"post"},{"path":"/panel/api/clients/groups/bulkRemove","method":"post"},{"path":"/panel/api/clients/bulkAttach","method":"post"},{"path":"/panel/api/clients/bulkDetach","method":"post"},{"path":"/panel/api/clients/bulkResetTraffic","method":"post"},{"path":"/panel/api/clients/groups","method":"get"},{"path":"/panel/api/clients/groups/{name}/emails","method":"get"},{"path":"/panel/api/clients/groups/create","method":"post"},{"path":"/panel/api/clients/groups/rename","method":"post"},{"path":"/panel/api/clients/groups/delete","method":"post"},{"path":"/panel/api/clients/groups/resetTraffic","method":"post"},{"path":"/panel/api/clients/resetTraffic/{email}","method":"post"},{"path":"/panel/api/clients/updateTraffic/{email}","method":"post"},{"path":"/panel/api/clients/ips/{email}","method":"post"},{"path":"/panel/api/clients/clearIps/{email}","method":"post"},{"path":"/panel/api/clients/hwids/{email}","method":"post"},{"path":"/panel/api/clients/hwids/{email}","method":"delete"},{"path":"/panel/api/clients/hwids/{email}/{id}","method":"delete"},{"path":"/panel/api/clients/onlines","method":"post"},{"path":"/panel/api/clients/onlinesByGuid","method":"post"},{"path":"/panel/api/clients/clientIpsByGuid","method":"post"},{"path":"/panel/api/clients/activeInbounds","method":"post"},{"path":"/panel/api/clients/lastOnline","method":"post"},{"path":"/panel/api/clients/traffic/{email}","method":"get"},{"path":"/panel/api/clients/subLinks/{subId}","method":"get"},{"path":"/panel/api/clients/happLink/{id}","method":"post"},{"path":"/panel/api/clients/links/{email}","method":"get"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/clients/list","method":"get"},{"path":"/panel/api/clients/list/paged","method":"get"},{"path":"/panel/api/clients/get/{email}","method":"get"},{"path":"/panel/api/clients/get/tgId/{tgId}","method":"get"},{"path":"/panel/api/clients/add","method":"post"},{"path":"/panel/api/clients/renewalPreview","method":"post"},{"path":"/panel/api/clients/update/{email}","method":"post"},{"path":"/panel/api/clients/del/{email}","method":"post"},{"path":"/panel/api/clients/{email}/attach","method":"post"},{"path":"/panel/api/clients/{email}/detach","method":"post"},{"path":"/panel/api/clients/{email}/externalLinks","method":"post"},{"path":"/panel/api/clients/resetAllTraffics","method":"post"},{"path":"/panel/api/clients/delDepleted","method":"post"},{"path":"/panel/api/clients/delOrphans","method":"post"},{"path":"/panel/api/clients/export","method":"get"},{"path":"/panel/api/clients/import","method":"post"},{"path":"/panel/api/clients/bulkAdjust","method":"post"},{"path":"/panel/api/clients/bulkEnable","method":"post"},{"path":"/panel/api/clients/bulkDisable","method":"post"},{"path":"/panel/api/clients/bulkDel","method":"post"},{"path":"/panel/api/clients/bulkCreate","method":"post"},{"path":"/panel/api/clients/groups/bulkAdd","method":"post"},{"path":"/panel/api/clients/groups/bulkRemove","method":"post"},{"path":"/panel/api/clients/bulkAttach","method":"post"},{"path":"/panel/api/clients/bulkDetach","method":"post"},{"path":"/panel/api/clients/bulkResetTraffic","method":"post"},{"path":"/panel/api/clients/groups","method":"get"},{"path":"/panel/api/clients/groups/{name}/emails","method":"get"},{"path":"/panel/api/clients/groups/create","method":"post"},{"path":"/panel/api/clients/groups/rename","method":"post"},{"path":"/panel/api/clients/groups/delete","method":"post"},{"path":"/panel/api/clients/groups/resetTraffic","method":"post"},{"path":"/panel/api/clients/groups/{name}/exceptions","method":"get"},{"path":"/panel/api/clients/groups/{name}/exceptions/set","method":"post"},{"path":"/panel/api/clients/groups/{name}/exceptions/add","method":"post"},{"path":"/panel/api/clients/groups/{name}/exceptions/remove","method":"post"},{"path":"/panel/api/clients/policies","method":"get"},{"path":"/panel/api/clients/policies/{id}","method":"get"},{"path":"/panel/api/clients/policies/create","method":"post"},{"path":"/panel/api/clients/policies/{id}/update","method":"post"},{"path":"/panel/api/clients/policies/{id}/delete","method":"post"},{"path":"/panel/api/clients/policies/preview","method":"post"},{"path":"/panel/api/clients/policies/apply","method":"post"},{"path":"/panel/api/clients/resetTraffic/{email}","method":"post"},{"path":"/panel/api/clients/updateTraffic/{email}","method":"post"},{"path":"/panel/api/clients/ips/{email}","method":"post"},{"path":"/panel/api/clients/clearIps/{email}","method":"post"},{"path":"/panel/api/clients/hwids/{email}","method":"post"},{"path":"/panel/api/clients/hwids/{email}","method":"delete"},{"path":"/panel/api/clients/hwids/{email}/{id}","method":"delete"},{"path":"/panel/api/clients/onlines","method":"post"},{"path":"/panel/api/clients/onlinesByGuid","method":"post"},{"path":"/panel/api/clients/clientIpsByGuid","method":"post"},{"path":"/panel/api/clients/activeInbounds","method":"post"},{"path":"/panel/api/clients/lastOnline","method":"post"},{"path":"/panel/api/clients/traffic/{email}","method":"get"},{"path":"/panel/api/clients/subLinks/{subId}","method":"get"},{"path":"/panel/api/clients/happLink/{id}","method":"post"},{"path":"/panel/api/clients/links/{email}","method":"get"}]} showTitle />
     </>
   );
 }

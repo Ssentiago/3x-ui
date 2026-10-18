@@ -1047,7 +1047,25 @@
       "removeFromGroup": "Quitar clientes…",
       "removeFromGroupTitle": "Quitar clientes del grupo «{name}»",
       "removeFromGroupDesc": "Selecciona miembros para quitar de este grupo. Los clientes se conservan (usa «Eliminar clientes del grupo» para eliminarlos por completo).",
-      "removeFromGroupResult": "Quitados {count} cliente(s) de {name}."
+      "removeFromGroupResult": "Quitados {count} cliente(s) de {name}.",
+      "groupDetail": "Grupo: {name}",
+      "clientsTitle": "Clientes",
+      "exception": "Excepción",
+      "included": "Incluido",
+      "addException": "Añadir excepción",
+      "removeException": "Quitar excepción",
+      "currentExceptions": "Excepciones actuales",
+      "applyPolicy": "Aplicar política",
+      "selectPolicy": "Seleccionar política",
+      "preview": "Vista previa",
+      "apply": "Aplicar",
+      "field": "Campo",
+      "previewSummary": "{changed} de {total} clientes serán modificados ({skipped} omitidos)",
+      "previewNoChanges": "Sin cambios — todos los clientes ya coinciden con la política",
+      "applySuccess": "Política aplicada: {changed} de {total} clientes actualizados",
+      "confirmApply": "¿Aplicar política?",
+      "confirmApplyDesc": "Esto actualizará {count} clientes del grupo {group}. Esta acción no se puede deshacer.",
+      "tabGroups": "Grupos"
     },
     "nodes": {
       "addNode": "Agregar nodo",
@@ -2426,6 +2444,22 @@
       "visit": "Visitar",
       "yourBrand": "Tu marca aquí",
       "yourBrandText": "Muestra tu empresa a miles de administradores de servidores que abren 3X-UI cada día."
+    },
+    "policies": {
+      "tabPolicies": "Políticas",
+      "name": "Nombre",
+      "trafficGB": "Tráfico (GB)",
+      "expiryDays": "Vencimiento (días)",
+      "limitIp": "Límite de IP",
+      "inboundIds": "Inbounds",
+      "unmanaged": "Sin definir",
+      "addPolicy": "Añadir política",
+      "editPolicy": "Editar política",
+      "nullHint": "Dejar vacío para ilimitado / sin vencimiento",
+      "inboundIdsHint": "IDs de inbounds separados por comas. Vacío = no gestionado",
+      "days": "días",
+      "inboundsHint": "Dejar vacío para omitir inbounds al aplicar",
+      "namePlaceholder": "p. ej. Oro"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Reiniciar servicio Xray",
     "restartXraySuccess": "El servicio Xray se ha reiniciado con éxito",
     "settings": "Configuración"
-  }
+  },
+  "required": "Obligatorio",
+  "deleteSuccess": "Eliminado correctamente",
+  "saveSuccess": "Guardado correctamente"
 }

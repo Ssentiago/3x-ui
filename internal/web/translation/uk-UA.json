@@ -1047,7 +1047,25 @@
       "removeFromGroup": "Видалити клієнтів…",
       "removeFromGroupTitle": "Видалити клієнтів з групи «{name}»",
       "removeFromGroupDesc": "Виберіть учасників для видалення з цієї групи. Самі клієнти зберігаються (використовуйте «Видалити клієнтів групи» для повного видалення).",
-      "removeFromGroupResult": "Видалено {count} клієнт(ів) з {name}."
+      "removeFromGroupResult": "Видалено {count} клієнт(ів) з {name}.",
+      "groupDetail": "Група: {name}",
+      "clientsTitle": "Клієнти",
+      "exception": "Виняток",
+      "included": "Включено",
+      "addException": "Додати виняток",
+      "removeException": "Прибрати виняток",
+      "currentExceptions": "Поточні винятки",
+      "applyPolicy": "Застосувати політику",
+      "selectPolicy": "Оберіть політику",
+      "preview": "Попередній перегляд",
+      "apply": "Застосувати",
+      "field": "Поле",
+      "previewSummary": "{changed} з {total} клієнтів буде змінено ({skipped} пропущено)",
+      "previewNoChanges": "Немає змін — усі клієнти вже відповідають політиці",
+      "applySuccess": "Політику застосовано: {changed} з {total} клієнтів оновлено",
+      "confirmApply": "Застосувати політику?",
+      "confirmApplyDesc": "Це оновить {count} клієнтів у групі {group}. Дію не можна скасувати.",
+      "tabGroups": "Групи"
     },
     "nodes": {
       "addNode": "Додати вузол",
@@ -2426,6 +2444,22 @@
       "visit": "Перейти",
       "yourBrand": "Тут може бути ваш бренд",
       "yourBrandText": "Покажіть свою компанію тисячам адміністраторів серверів, які щодня відкривають 3X-UI."
+    },
+    "policies": {
+      "tabPolicies": "Політики",
+      "name": "Назва",
+      "trafficGB": "Трафік (ГБ)",
+      "expiryDays": "Термін (днів)",
+      "limitIp": "Ліміт IP",
+      "inboundIds": "Інбаунди",
+      "unmanaged": "Не задано",
+      "addPolicy": "Додати політику",
+      "editPolicy": "Редагувати політику",
+      "nullHint": "Залиште порожнім для безліміту / без терміну",
+      "inboundIdsHint": "ID інбаундів через кому. Порожньо = не керується",
+      "days": "днів",
+      "inboundsHint": "Залиште порожнім, щоб пропустити інбаунди при застосуванні",
+      "namePlaceholder": "напр. Золото"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Перезапустити службу Xray",
     "restartXraySuccess": "Службу Xray успішно перезапущено",
     "settings": "Налаштування"
-  }
+  },
+  "required": "Обов'язкове",
+  "deleteSuccess": "Успішно видалено",
+  "saveSuccess": "Успішно збережено"
 }

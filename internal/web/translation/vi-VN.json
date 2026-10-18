@@ -1047,7 +1047,25 @@
       "removeFromGroup": "Xóa client…",
       "removeFromGroupTitle": "Xóa client khỏi nhóm «{name}»",
       "removeFromGroupDesc": "Chọn thành viên để xóa khỏi nhóm này. Bản thân client được giữ lại (dùng «Xóa client trong nhóm» để xóa hoàn toàn).",
-      "removeFromGroupResult": "Đã xóa {count} client khỏi {name}."
+      "removeFromGroupResult": "Đã xóa {count} client khỏi {name}.",
+      "groupDetail": "Nhóm: {name}",
+      "clientsTitle": "Khách hàng",
+      "exception": "Ngoại lệ",
+      "included": "Đã bao gồm",
+      "addException": "Thêm ngoại lệ",
+      "removeException": "Xóa ngoại lệ",
+      "currentExceptions": "Ngoại lệ hiện tại",
+      "applyPolicy": "Áp dụng chính sách",
+      "selectPolicy": "Chọn chính sách",
+      "preview": "Xem trước",
+      "apply": "Áp dụng",
+      "field": "Trường",
+      "previewSummary": "{changed} trên {total} khách hàng sẽ thay đổi ({skipped} bỏ qua)",
+      "previewNoChanges": "Không có thay đổi — tất cả khách hàng đã khớp chính sách",
+      "applySuccess": "Đã áp dụng chính sách: {changed} trên {total} khách hàng đã cập nhật",
+      "confirmApply": "Áp dụng chính sách?",
+      "confirmApplyDesc": "Thao tác này sẽ cập nhật {count} khách hàng trong nhóm {group}. Không thể hoàn tác.",
+      "tabGroups": "Nhóm"
     },
     "nodes": {
       "addNode": "Thêm nút",
@@ -2426,6 +2444,22 @@
       "visit": "Truy cập",
       "yourBrand": "Thương hiệu của bạn ở đây",
       "yourBrandText": "Đưa công ty bạn đến hàng nghìn quản trị viên máy chủ mở 3X-UI mỗi ngày."
+    },
+    "policies": {
+      "tabPolicies": "Chính sách",
+      "name": "Tên",
+      "trafficGB": "Lưu lượng (GB)",
+      "expiryDays": "Hạn dùng (ngày)",
+      "limitIp": "Giới hạn IP",
+      "inboundIds": "Inbound",
+      "unmanaged": "Chưa đặt",
+      "addPolicy": "Thêm chính sách",
+      "editPolicy": "Sửa chính sách",
+      "nullHint": "Để trống để không giới hạn / không hết hạn",
+      "inboundIdsHint": "ID inbound phân tách bằng dấu phẩy. Trống = không quản lý",
+      "days": "ngày",
+      "inboundsHint": "Để trống để bỏ qua inbound khi áp dụng",
+      "namePlaceholder": "VD: Vàng"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Khởi động lại dịch vụ Xray",
     "restartXraySuccess": "Dịch vụ Xray đã được khởi động lại thành công",
     "settings": "Cài đặt"
-  }
+  },
+  "required": "Bắt buộc",
+  "deleteSuccess": "Đã xóa thành công",
+  "saveSuccess": "Đã lưu thành công"
 }

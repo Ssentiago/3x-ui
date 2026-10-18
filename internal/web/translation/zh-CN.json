@@ -1047,7 +1047,25 @@
       "removeFromGroup": "移除客户端…",
       "removeFromGroupTitle": "从分组 “{name}” 移除客户端",
       "removeFromGroupDesc": "选择要从此分组中移除的成员。客户端本身保留(使用 “删除分组中的客户端” 完全移除)。",
-      "removeFromGroupResult": "已从 {name} 移除 {count} 个客户端。"
+      "removeFromGroupResult": "已从 {name} 移除 {count} 个客户端。",
+      "groupDetail": "组：{name}",
+      "clientsTitle": "客户端",
+      "exception": "例外",
+      "included": "已包含",
+      "addException": "添加例外",
+      "removeException": "移除例外",
+      "currentExceptions": "当前例外",
+      "applyPolicy": "应用策略",
+      "selectPolicy": "选择策略",
+      "preview": "预览",
+      "apply": "应用",
+      "field": "字段",
+      "previewSummary": "{total} 个客户端中有 {changed} 个将被修改（跳过 {skipped} 个）",
+      "previewNoChanges": "无变更 — 所有客户端已符合策略",
+      "applySuccess": "策略已应用：{total} 个客户端中已更新 {changed} 个",
+      "confirmApply": "应用策略？",
+      "confirmApplyDesc": "这将更新组 {group} 中的 {count} 个客户端。此操作无法撤销。",
+      "tabGroups": "组"
     },
     "nodes": {
       "addNode": "添加节点",
@@ -2426,6 +2444,22 @@
       "visit": "访问",
       "yourBrand": "您的品牌展示位",
       "yourBrandText": "让每天打开 3X-UI 的数千名服务器管理员看到您的公司。"
+    },
+    "policies": {
+      "tabPolicies": "策略",
+      "name": "名称",
+      "trafficGB": "流量 (GB)",
+      "expiryDays": "有效期（天）",
+      "limitIp": "IP 限制",
+      "inboundIds": "入站",
+      "unmanaged": "未设置",
+      "addPolicy": "添加策略",
+      "editPolicy": "编辑策略",
+      "nullHint": "留空表示不限/无期限",
+      "inboundIdsHint": "以逗号分隔的入站 ID。留空 = 不管理",
+      "days": "天",
+      "inboundsHint": "留空则应用时跳过入站",
+      "namePlaceholder": "例如：黄金"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "重启 Xray 服务",
     "restartXraySuccess": "Xray 服务已成功重启",
     "settings": "设置"
-  }
+  },
+  "required": "必填",
+  "deleteSuccess": "删除成功",
+  "saveSuccess": "保存成功"
 }

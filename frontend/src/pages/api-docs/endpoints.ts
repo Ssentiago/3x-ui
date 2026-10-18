@@ -1513,6 +1513,100 @@ export const sections: readonly Section[] = [
         response: '{\n  "success": true,\n  "obj": {\n    "name": "customer-a"\n  }\n}',
       },
       {
+        method: 'GET',
+        path: '/panel/api/clients/groups/:name/exceptions',
+        summary:
+          'List the per-group exception emails. Clients on this list are skipped when a policy is applied to the group.',
+        params: [{ name: 'name', in: 'path', type: 'string', desc: 'Group name (URL-encoded).' }],
+        response: '{\n  "success": true,\n  "obj": ["alice", "bob"]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/groups/:name/exceptions/set',
+        summary:
+          'Replace the full exception list for a group. Atomic delete-then-insert. Passing an empty array clears all exceptions.',
+        params: [{ name: 'name', in: 'path', type: 'string', desc: 'Group name (URL-encoded).' }],
+        body: '{\n  "emails": ["alice", "bob"]\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "group": "customer-a",\n    "count": 2\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/groups/:name/exceptions/add',
+        summary:
+          'Add a single email to the group exception list. Idempotent — no error if the email is already excluded.',
+        params: [{ name: 'name', in: 'path', type: 'string', desc: 'Group name (URL-encoded).' }],
+        body: '{\n  "email": "alice"\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "group": "customer-a",\n    "email": "alice"\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/groups/:name/exceptions/remove',
+        summary: 'Remove a single email from the group exception list.',
+        params: [{ name: 'name', in: 'path', type: 'string', desc: 'Group name (URL-encoded).' }],
+        body: '{\n  "email": "alice"\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "group": "customer-a",\n    "email": "alice"\n  }\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/policies',
+        summary:
+          'List all policies. A policy is a named set of field values (trafficGB, expiryDays, limitIP, inboundIds) that can be explicitly applied to a group. NULL fields are skipped on apply.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "id": 1,\n      "name": "Gold",\n      "trafficGB": 50,\n      "expiryDays": 30,\n      "limitIp": 3,\n      "inboundIds": [1, 2]\n    }\n  ]\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/clients/policies/:id',
+        summary: 'Get one policy by id.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Policy id.' }],
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "id": 1,\n    "name": "Gold",\n    "trafficGB": 50,\n    "expiryDays": 30,\n    "limitIp": 3,\n    "inboundIds": [1, 2]\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/policies/create',
+        summary: 'Create a policy. Omit a field (or set it null) to leave it unmanaged.',
+        body: '{\n  "name": "Gold",\n  "trafficGB": 50,\n  "expiryDays": 30,\n  "limitIp": 3,\n  "inboundIds": [1, 2]\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "id": 1,\n    "name": "Gold",\n    "trafficGB": 50,\n    "expiryDays": 30,\n    "limitIp": 3,\n    "inboundIds": [1, 2]\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/policies/:id/update',
+        summary: 'Update a policy. Fields set to null become unmanaged.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Policy id.' }],
+        body: '{\n  "name": "Gold",\n  "trafficGB": 100,\n  "expiryDays": 60,\n  "limitIp": null,\n  "inboundIds": [1, 2]\n}',
+        response: '{\n  "success": true,\n  "obj": {\n    "id": 1\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/policies/:id/delete',
+        summary: 'Delete a policy. Does not undo any previous apply.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Policy id.' }],
+        response: '{\n  "success": true,\n  "obj": {\n    "id": 1\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/policies/preview',
+        summary:
+          'Dry-run: compute the effect of applying a policy to a group. Returns how many clients would change, a per-field breakdown, and a per-client field diff. Exception clients are counted as skipped. Nothing is written.',
+        body: '{\n  "group": "customer-a",\n  "policyId": 1\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "totalClients": 42,\n    "skipped": 3,\n    "changed": 28,\n    "fieldChanges": { "totalGB": 20, "expiryTime": 15, "limitIP": 5, "inbounds": 2 },\n    "changes": [\n      { "email": "alice", "field": "totalGB", "oldVal": "10 GB", "newVal": "50 GB" }\n    ]\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/clients/policies/apply',
+        summary:
+          'Write a policy onto every non-excepted client of a group. Fields managed by the policy are overwritten (traffic in bytes, expiry as now+days, IP limit, inbound attachments via bulk attach/detach). Exception clients are skipped. Returns a change report and triggers a Xray restart if inbound attachments changed.',
+        body: '{\n  "group": "customer-a",\n  "policyId": 1\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "totalClients": 42,\n    "skipped": 3,\n    "changed": 28,\n    "fieldChanges": { "totalGB": 20, "expiryTime": 15, "limitIP": 5, "inbounds": 2 },\n    "inboundsAttached": 2,\n    "inboundsDetached": 1\n  }\n}',
+      },
+      {
         method: 'POST',
         path: '/panel/api/clients/resetTraffic/:email',
         summary:

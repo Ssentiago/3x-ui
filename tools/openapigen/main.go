@@ -40,6 +40,8 @@ func run(root, outDir string) error {
 				"InboundFallback",
 				"Host",
 				"SubBalancer",
+				"Policy",
+				"GroupException",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
@@ -110,6 +112,11 @@ func run(root, outDir string) error {
 				"AmneziaWGLogs",
 				"PeerActivity",
 				"HwidSlotStatus",
+				"PolicySummary",
+				"PolicyInput",
+				"ApplyPreview",
+				"ApplyResult",
+				"ApplyFieldChange",
 			),
 		},
 		{

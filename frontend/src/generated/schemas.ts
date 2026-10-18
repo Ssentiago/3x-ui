@@ -1647,6 +1647,99 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "ApplyFieldChange": {
+    "description": "ApplyFieldChange describes one field of one client that apply would change.",
+    "properties": {
+      "email": {
+        "type": "string"
+      },
+      "field": {
+        "type": "string"
+      },
+      "newVal": {
+        "type": "string"
+      },
+      "oldVal": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "email",
+      "field",
+      "newVal",
+      "oldVal"
+    ],
+    "type": "object"
+  },
+  "ApplyPreview": {
+    "description": "ApplyPreview summarizes what an apply would do to a group.",
+    "properties": {
+      "changed": {
+        "type": "integer"
+      },
+      "changes": {
+        "items": {
+          "$ref": "#/components/schemas/ApplyFieldChange"
+        },
+        "type": "array"
+      },
+      "fieldChanges": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
+      },
+      "skipped": {
+        "type": "integer"
+      },
+      "totalClients": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "changed",
+      "changes",
+      "fieldChanges",
+      "skipped",
+      "totalClients"
+    ],
+    "type": "object"
+  },
+  "ApplyResult": {
+    "description": "ApplyResult is the post-apply report.",
+    "properties": {
+      "changed": {
+        "type": "integer"
+      },
+      "fieldChanges": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
+      },
+      "inboundsAttached": {
+        "type": "integer"
+      },
+      "inboundsDetached": {
+        "type": "integer"
+      },
+      "skipped": {
+        "type": "integer"
+      },
+      "totalClients": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "changed",
+      "fieldChanges",
+      "inboundsAttached",
+      "inboundsDetached",
+      "skipped",
+      "totalClients"
+    ],
+    "type": "object"
+  },
   "Client": {
     "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
     "properties": {
@@ -2582,6 +2675,31 @@ export const SCHEMAS: Record<string, unknown> = {
     "required": [
       "reason",
       "token"
+    ],
+    "type": "object"
+  },
+  "GroupException": {
+    "description": "GroupException is a per-group exclusion: the client's email is skipped\nwhen a policy is applied to the group.",
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "email": {
+        "type": "string"
+      },
+      "groupName": {
+        "type": "string"
+      },
+      "id": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "email",
+      "groupName",
+      "id"
     ],
     "type": "object"
   },
@@ -4130,6 +4248,131 @@ export const SCHEMAS: Record<string, unknown> = {
       "online",
       "tag",
       "up"
+    ],
+    "type": "object"
+  },
+  "Policy": {
+    "description": "Policy is a named set of field values that can be explicitly applied to\nclients in a group. NULL fields are skipped on apply (the client keeps\nits own value).",
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "expiryDays": {
+        "example": 30,
+        "nullable": true,
+        "type": "integer"
+      },
+      "id": {
+        "example": 1,
+        "type": "integer"
+      },
+      "inboundIds": {
+        "example": "[1,2]",
+        "type": "string"
+      },
+      "limitIp": {
+        "example": 3,
+        "nullable": true,
+        "type": "integer"
+      },
+      "name": {
+        "example": "Gold",
+        "type": "string"
+      },
+      "trafficGB": {
+        "example": 50,
+        "format": "int64",
+        "nullable": true,
+        "type": "integer"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "id",
+      "inboundIds",
+      "name",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "PolicyInput": {
+    "properties": {
+      "expiryDays": {
+        "nullable": true,
+        "type": "integer"
+      },
+      "inboundIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "limitIp": {
+        "nullable": true,
+        "type": "integer"
+      },
+      "name": {
+        "type": "string"
+      },
+      "trafficGB": {
+        "format": "int64",
+        "nullable": true,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "inboundIds",
+      "name"
+    ],
+    "type": "object"
+  },
+  "PolicySummary": {
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "expiryDays": {
+        "nullable": true,
+        "type": "integer"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "inboundIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "limitIp": {
+        "nullable": true,
+        "type": "integer"
+      },
+      "name": {
+        "type": "string"
+      },
+      "trafficGB": {
+        "format": "int64",
+        "nullable": true,
+        "type": "integer"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "id",
+      "inboundIds",
+      "name",
+      "updatedAt"
     ],
     "type": "object"
   },

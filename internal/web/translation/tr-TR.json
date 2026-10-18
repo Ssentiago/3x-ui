@@ -1047,7 +1047,25 @@
       "removeFromGroup": "Kullanıcı Çıkar…",
       "removeFromGroupTitle": "«{name}» Grubundan Kullanıcı Çıkar",
       "removeFromGroupDesc": "Bu gruptan çıkarılacak üyeleri seçin. Kullanıcılar korunur (tamamen kaldırmak için «Gruptaki kullanıcıları sil» kullanın).",
-      "removeFromGroupResult": "{name} grubundan {count} kullanıcı çıkarıldı."
+      "removeFromGroupResult": "{name} grubundan {count} kullanıcı çıkarıldı.",
+      "groupDetail": "Grup: {name}",
+      "clientsTitle": "İstemciler",
+      "exception": "İstisna",
+      "included": "Dahil",
+      "addException": "İstisna ekle",
+      "removeException": "İstisnayı kaldır",
+      "currentExceptions": "Mevcut istisnalar",
+      "applyPolicy": "Politika uygula",
+      "selectPolicy": "Politika seç",
+      "preview": "Önizleme",
+      "apply": "Uygula",
+      "field": "Alan",
+      "previewSummary": "{total} istemciden {changed} tanesi değişecek ({skipped} atlandı)",
+      "previewNoChanges": "Değişiklik yok — tüm istemciler zaten politikayla eşleşiyor",
+      "applySuccess": "Politika uygulandı: {total} istemciden {changed} tanesi güncellendi",
+      "confirmApply": "Politika uygulansın mı?",
+      "confirmApplyDesc": "Bu, {group} grubundaki {count} istemciyi güncelleyecek. Bu işlem geri alınamaz.",
+      "tabGroups": "Gruplar"
     },
     "nodes": {
       "addNode": "Düğüm Ekle",
@@ -2426,6 +2444,22 @@
       "visit": "Ziyaret et",
       "yourBrand": "Markanız burada",
       "yourBrandText": "Şirketinizi her gün 3X-UI açan binlerce sunucu yöneticisinin önüne çıkarın."
+    },
+    "policies": {
+      "tabPolicies": "Politikalar",
+      "name": "Ad",
+      "trafficGB": "Trafik (GB)",
+      "expiryDays": "Süre (gün)",
+      "limitIp": "IP limiti",
+      "inboundIds": "Gelen bağlantılar",
+      "unmanaged": "Ayarlanmadı",
+      "addPolicy": "Politika ekle",
+      "editPolicy": "Politikayı düzenle",
+      "nullHint": "Süresiz / limitsiz için boş bırakın",
+      "inboundIdsHint": "Virgülle ayrılmış inbound kimlikleri. Boş = yönetilmiyor",
+      "days": "gün",
+      "inboundsHint": "Uygularken gelen bağlantıları atlamak için boş bırakın",
+      "namePlaceholder": "örn. Altın"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Xray Hizmetini Yeniden Başlat",
     "restartXraySuccess": "Xray hizmeti başarıyla yeniden başlatıldı",
     "settings": "Ayarlar"
-  }
+  },
+  "required": "Zorunlu",
+  "deleteSuccess": "Başarıyla silindi",
+  "saveSuccess": "Başarıyla kaydedildi"
 }

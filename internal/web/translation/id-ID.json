@@ -1047,7 +1047,25 @@
       "removeFromGroup": "Hapus klien…",
       "removeFromGroupTitle": "Hapus klien dari grup «{name}»",
       "removeFromGroupDesc": "Pilih anggota untuk dihapus dari grup ini. Klien tetap dipertahankan (gunakan «Hapus klien di grup» untuk menghapus sepenuhnya).",
-      "removeFromGroupResult": "{count} klien dihapus dari {name}."
+      "removeFromGroupResult": "{count} klien dihapus dari {name}.",
+      "groupDetail": "Grup: {name}",
+      "clientsTitle": "Klien",
+      "exception": "Pengecualian",
+      "included": "Termasuk",
+      "addException": "Tambah pengecualian",
+      "removeException": "Hapus pengecualian",
+      "currentExceptions": "Pengecualian saat ini",
+      "applyPolicy": "Terapkan kebijakan",
+      "selectPolicy": "Pilih kebijakan",
+      "preview": "Pratinjau",
+      "apply": "Terapkan",
+      "field": "Bidang",
+      "previewSummary": "{changed} dari {total} klien akan berubah ({skipped} dilewati)",
+      "previewNoChanges": "Tidak ada perubahan — semua klien sudah sesuai kebijakan",
+      "applySuccess": "Kebijakan diterapkan: {changed} dari {total} klien diperbarui",
+      "confirmApply": "Terapkan kebijakan?",
+      "confirmApplyDesc": "Ini akan memperbarui {count} klien di grup {group}. Tindakan ini tidak dapat dibatalkan.",
+      "tabGroups": "Grup"
     },
     "nodes": {
       "addNode": "Tambah Node",
@@ -2426,6 +2444,22 @@
       "visit": "Kunjungi",
       "yourBrand": "Merek Anda di sini",
       "yourBrandText": "Tampilkan perusahaan Anda kepada ribuan admin server yang membuka 3X-UI setiap hari."
+    },
+    "policies": {
+      "tabPolicies": "Kebijakan",
+      "name": "Nama",
+      "trafficGB": "Trafik (GB)",
+      "expiryDays": "Kedaluwarsa (hari)",
+      "limitIp": "Batas IP",
+      "inboundIds": "Inbound",
+      "unmanaged": "Belum diatur",
+      "addPolicy": "Tambah kebijakan",
+      "editPolicy": "Edit kebijakan",
+      "nullHint": "Kosongkan untuk tanpa batas / tanpa kedaluwarsa",
+      "inboundIdsHint": "ID inbound dipisahkan koma. Kosong = tidak dikelola",
+      "days": "hari",
+      "inboundsHint": "Kosongkan untuk melewati inbound saat menerapkan",
+      "namePlaceholder": "mis. Emas"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "Mulai Ulang Layanan Xray",
     "restartXraySuccess": "Layanan Xray berhasil dimulai ulang",
     "settings": "Pengaturan"
-  }
+  },
+  "required": "Wajib",
+  "deleteSuccess": "Berhasil dihapus",
+  "saveSuccess": "Berhasil disimpan"
 }

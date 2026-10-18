@@ -402,6 +402,30 @@ export interface ApiTokenView {
   token?: string;
 }
 
+export interface ApplyFieldChange {
+  email: string;
+  field: string;
+  newVal: string;
+  oldVal: string;
+}
+
+export interface ApplyPreview {
+  changed: number;
+  changes: ApplyFieldChange[];
+  fieldChanges: Record<string, number>;
+  skipped: number;
+  totalClients: number;
+}
+
+export interface ApplyResult {
+  changed: number;
+  fieldChanges: Record<string, number>;
+  inboundsAttached: number;
+  inboundsDetached: number;
+  skipped: number;
+  totalClients: number;
+}
+
 export interface Client {
   adTag?: string;
   allowedIPs?: string[];
@@ -608,6 +632,13 @@ export interface GeodataTokenIssue {
   file?: string;
   reason: string;
   token: string;
+}
+
+export interface GroupException {
+  createdAt: number;
+  email: string;
+  groupName: string;
+  id: number;
 }
 
 export interface HappLinkResult {
@@ -941,6 +972,36 @@ export interface PeerActivity {
   online: boolean;
   tag: string;
   up: number;
+}
+
+export interface Policy {
+  createdAt: number;
+  expiryDays?: number | null;
+  id: number;
+  inboundIds: string;
+  limitIp?: number | null;
+  name: string;
+  trafficGB?: number | null;
+  updatedAt: number;
+}
+
+export interface PolicyInput {
+  expiryDays?: number | null;
+  inboundIds: number[];
+  limitIp?: number | null;
+  name: string;
+  trafficGB?: number | null;
+}
+
+export interface PolicySummary {
+  createdAt: number;
+  expiryDays?: number | null;
+  id: number;
+  inboundIds: number[];
+  limitIp?: number | null;
+  name: string;
+  trafficGB?: number | null;
+  updatedAt: number;
 }
 
 export interface ProbeResultUI {

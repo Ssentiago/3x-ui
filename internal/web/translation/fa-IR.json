@@ -1047,7 +1047,25 @@
       "removeFromGroup": "حذف کاربران…",
       "removeFromGroupTitle": "حذف کاربران از گروه «{name}»",
       "removeFromGroupDesc": "اعضایی را برای حذف از این گروه انتخاب کنید. خود کاربران حفظ می‌شوند (برای حذف کامل از «حذف کاربران گروه» استفاده کنید).",
-      "removeFromGroupResult": "{count} کاربر از {name} حذف شد."
+      "removeFromGroupResult": "{count} کاربر از {name} حذف شد.",
+      "groupDetail": "گروه: {name}",
+      "clientsTitle": "کلاینت‌ها",
+      "exception": "استثنا",
+      "included": "شامل",
+      "addException": "افزودن استثنا",
+      "removeException": "حذف استثنا",
+      "currentExceptions": "استثناهای فعلی",
+      "applyPolicy": "اعمال سیاست",
+      "selectPolicy": "انتخاب سیاست",
+      "preview": "پیش‌نمایش",
+      "apply": "اعمال",
+      "field": "فیلد",
+      "previewSummary": "{changed} از {total} کلاینت تغییر خواهند کرد ({skipped} رد شد)",
+      "previewNoChanges": "تغییری نیست — همه کلاینت‌ها قبلاً با سیاست مطابقت دارند",
+      "applySuccess": "سیاست اعمال شد: {changed} از {total} کلاینت به‌روزرسانی شد",
+      "confirmApply": "سیاست اعمال شود؟",
+      "confirmApplyDesc": "این {count} کلاینت در گروه {group} را به‌روزرسانی می‌کند. این عمل قابل بازگشت نیست.",
+      "tabGroups": "گروه‌ها"
     },
     "nodes": {
       "addNode": "افزودن نود",
@@ -2426,6 +2444,22 @@
       "visit": "مشاهده",
       "yourBrand": "جای برند شما",
       "yourBrandText": "شرکت خود را جلوی چشم هزاران ادمین سروری بگذارید که هر روز 3X-UI را باز می‌کنند."
+    },
+    "policies": {
+      "tabPolicies": "سیاست‌ها",
+      "name": "نام",
+      "trafficGB": "ترافیک (گیگابایت)",
+      "expiryDays": "انقضا (روز)",
+      "limitIp": "محدودیت IP",
+      "inboundIds": "اینباندها",
+      "unmanaged": "تنظیم نشده",
+      "addPolicy": "افزودن سیاست",
+      "editPolicy": "ویرایش سیاست",
+      "nullHint": "برای نامحدود/بدون انقضا خالی بگذارید",
+      "inboundIdsHint": "شناسه‌های اینباند جدا شده با کاما. خالی = مدیریت نمی‌شود",
+      "days": "روز",
+      "inboundsHint": "برای رد شدن از اینباندها هنگام اعمال، خالی بگذارید",
+      "namePlaceholder": "مثلاً: طلایی"
     }
   },
   "tgbot": {
@@ -2731,5 +2765,8 @@
     "restartXray": "راه‌اندازی مجدد سرویس Xray",
     "restartXraySuccess": "سرویس Xray با موفقیت مجدداً راه‌اندازی شد",
     "settings": "تنظیمات"
-  }
+  },
+  "required": "الزامی",
+  "deleteSuccess": "با موفقیت حذف شد",
+  "saveSuccess": "با موفقیت ذخیره شد"
 }
