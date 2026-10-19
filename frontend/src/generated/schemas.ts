@@ -569,6 +569,20 @@ export const SCHEMAS: Record<string, unknown> = {
         "maximum": 65535,
         "minimum": 1,
         "type": "integer"
+      },
+      "webhookCpu": {
+        "maximum": 100,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "webhookMemory": {
+        "maximum": 100,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "webhookSourceName": {
+        "maxLength": 64,
+        "type": "string"
       }
     },
     "required": [
@@ -748,7 +762,10 @@ export const SCHEMAS: Record<string, unknown> = {
       "webDomain",
       "webKeyFile",
       "webListen",
-      "webPort"
+      "webPort",
+      "webhookCpu",
+      "webhookMemory",
+      "webhookSourceName"
     ],
     "type": "object"
   },
@@ -1345,6 +1362,20 @@ export const SCHEMAS: Record<string, unknown> = {
         "maximum": 65535,
         "minimum": 1,
         "type": "integer"
+      },
+      "webhookCpu": {
+        "maximum": 100,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "webhookMemory": {
+        "maximum": 100,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "webhookSourceName": {
+        "maxLength": 64,
+        "type": "string"
       }
     },
     "required": [
@@ -1532,7 +1563,10 @@ export const SCHEMAS: Record<string, unknown> = {
       "webDomain",
       "webKeyFile",
       "webListen",
-      "webPort"
+      "webPort",
+      "webhookCpu",
+      "webhookMemory",
+      "webhookSourceName"
     ],
     "type": "object"
   },
@@ -2416,6 +2450,50 @@ export const SCHEMAS: Record<string, unknown> = {
       "online",
       "onlineCount",
       "total"
+    ],
+    "type": "object"
+  },
+  "EndpointView": {
+    "description": "EndpointView is the API shape: Secret is never serialized back to callers.",
+    "properties": {
+      "allowPrivate": {
+        "type": "boolean"
+      },
+      "backupAttachFile": {
+        "type": "boolean"
+      },
+      "backupTransport": {
+        "type": "string"
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "enabledEvents": {
+        "type": "string"
+      },
+      "hasSecret": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "name": {
+        "type": "string"
+      },
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "allowPrivate",
+      "backupAttachFile",
+      "backupTransport",
+      "enabled",
+      "enabledEvents",
+      "hasSecret",
+      "id",
+      "name",
+      "url"
     ],
     "type": "object"
   },
@@ -4625,6 +4703,26 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "TestResult": {
+    "description": "TestResult mirrors EmailService.SMTPTestResult for the test endpoint.",
+    "properties": {
+      "msg": {
+        "type": "string"
+      },
+      "stage": {
+        "type": "string"
+      },
+      "success": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "msg",
+      "stage",
+      "success"
+    ],
+    "type": "object"
+  },
   "Traffic": {
     "description": "Traffic represents network traffic statistics for Xray connections.\nIt tracks upload and download bytes for inbound or outbound traffic.",
     "properties": {
@@ -4749,6 +4847,62 @@ export const SCHEMAS: Record<string, unknown> = {
       "id",
       "password",
       "username"
+    ],
+    "type": "object"
+  },
+  "WebhookEndpoint": {
+    "description": "WebhookEndpoint is one outbound HTTP notification target. Secret never\nleaves the server: list/test views report HasSecret instead of the value.",
+    "properties": {
+      "allowPrivate": {
+        "type": "boolean"
+      },
+      "backupAttachFile": {
+        "type": "boolean"
+      },
+      "backupTransport": {
+        "type": "string"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "enabledEvents": {
+        "type": "string"
+      },
+      "hasSecret": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "name": {
+        "maxLength": 64,
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "url": {
+        "maxLength": 1024,
+        "type": "string"
+      }
+    },
+    "required": [
+      "allowPrivate",
+      "backupAttachFile",
+      "backupTransport",
+      "createdAt",
+      "enabled",
+      "enabledEvents",
+      "hasSecret",
+      "id",
+      "name",
+      "updatedAt",
+      "url"
     ],
     "type": "object"
   }

@@ -208,6 +208,9 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	a.settingController = NewSettingController(api)
 	a.xraySettingController = NewXraySettingController(api)
 
+	// Webhook notification endpoints
+	NewWebhookController(api)
+
 	// Subscription balancers — client-side balancers for the JSON sub output
 	NewSubBalancerController(api)
 

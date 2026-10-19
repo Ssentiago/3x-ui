@@ -2077,6 +2077,177 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'webhooks',
+    title: 'Webhooks',
+    description:
+      'Outbound HTTP notification endpoints. Each endpoint receives signed POSTs for the events it subscribed to: JSON envelopes for panel events, raw <code>application/octet-stream</code> for database backup files (or base64 attachments when backupTransport is json_base64). Secrets are write-only — list responses report hasSecret instead of the value.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/webhooks',
+        summary: 'List every webhook endpoint. Signing secrets are never returned.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "id": 1,\n      "name": "n8n",\n      "url": "https://n8n.example.com/hook/3x-ui",\n      "enabled": true,\n      "enabledEvents": "login.attempt,cpu.high,db.backup.completed",\n      "allowPrivate": false,\n      "backupTransport": "raw",\n      "backupAttachFile": true,\n      "hasSecret": true\n    }\n  ]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/webhooks/create',
+        summary:
+          'Create a webhook endpoint. The secret is stored write-only and used to sign request bodies with HMAC-SHA256.',
+        params: [
+          { name: 'name', in: 'body', type: 'string', desc: 'Display name.' },
+          { name: 'url', in: 'body', type: 'string', desc: 'HTTPS or HTTP target URL.' },
+          {
+            name: 'secret',
+            in: 'body',
+            type: 'string',
+            desc: 'HMAC signing secret.',
+            optional: true,
+          },
+          {
+            name: 'enabled',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Whether deliveries run.',
+            optional: true,
+          },
+          {
+            name: 'enabledEvents',
+            in: 'body',
+            type: 'string',
+            desc: 'CSV of event names: outbound.down, outbound.up, xray.crash, node.down, node.up, cpu.high, memory.high, login.attempt, db.backup.completed, db.backup.failed.',
+            optional: true,
+          },
+          {
+            name: 'allowPrivate',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Allow private/internal target addresses (local n8n). Default false.',
+            optional: true,
+          },
+          {
+            name: 'backupTransport',
+            in: 'body',
+            type: 'string',
+            desc: 'raw (default, application/octet-stream stream) or json_base64 (attachment inside the JSON envelope).',
+            optional: true,
+          },
+          {
+            name: 'backupAttachFile',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Include the database snapshot file. When false, db.backup.completed carries metadata only.',
+            optional: true,
+          },
+        ],
+        body: '{\n  "name": "n8n",\n  "url": "https://n8n.example.com/hook/3x-ui",\n  "secret": "shared-secret",\n  "enabled": true,\n  "enabledEvents": "login.attempt,db.backup.completed",\n  "allowPrivate": false,\n  "backupTransport": "raw",\n  "backupAttachFile": true\n}',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "id": 1,\n    "name": "n8n",\n    "hasSecret": true\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/webhooks/update/:id',
+        summary:
+          'Update a webhook endpoint. A blank secret preserves the stored one unless clearSecret is true.',
+        params: [
+          { name: 'id', in: 'path', type: 'integer', desc: 'Endpoint id.' },
+          { name: 'name', in: 'body', type: 'string', desc: 'Display name.' },
+          { name: 'url', in: 'body', type: 'string', desc: 'Target URL.' },
+          {
+            name: 'secret',
+            in: 'body',
+            type: 'string',
+            desc: 'New secret; blank keeps the stored one.',
+            optional: true,
+          },
+          {
+            name: 'clearSecret',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Explicitly wipe the stored secret.',
+            optional: true,
+          },
+          {
+            name: 'enabled',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Whether deliveries run.',
+            optional: true,
+          },
+          {
+            name: 'enabledEvents',
+            in: 'body',
+            type: 'string',
+            desc: 'CSV of event names.',
+            optional: true,
+          },
+          {
+            name: 'allowPrivate',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Allow private targets.',
+            optional: true,
+          },
+          {
+            name: 'backupTransport',
+            in: 'body',
+            type: 'string',
+            desc: 'raw or json_base64.',
+            optional: true,
+          },
+          {
+            name: 'backupAttachFile',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Include the DB file.',
+            optional: true,
+          },
+        ],
+        response: '{\n  "success": true,\n  "obj": {\n    "id": 1,\n    "hasSecret": true\n  }\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/webhooks/delete/:id',
+        summary: 'Delete a webhook endpoint.',
+        params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Endpoint id.' }],
+        response: '{\n  "success": true\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/webhooks/test',
+        summary:
+          'Send a signed webhook.test ping. Pass id to test a stored endpoint, or the full definition to test an unsaved draft. msg is an i18n key under pages.settings.',
+        params: [
+          {
+            name: 'id',
+            in: 'body',
+            type: 'integer',
+            desc: 'Stored endpoint id. 0 tests the draft fields below.',
+            optional: true,
+          },
+          { name: 'url', in: 'body', type: 'string', desc: 'Draft target URL.', optional: true },
+          {
+            name: 'secret',
+            in: 'body',
+            type: 'string',
+            desc: 'Draft signing secret.',
+            optional: true,
+          },
+          {
+            name: 'allowPrivate',
+            in: 'body',
+            type: 'boolean',
+            desc: 'Allow private draft targets.',
+            optional: true,
+          },
+        ],
+        body: '{\n  "id": 1\n}',
+        response: '{\n  "success": true,\n  "stage": "send",\n  "msg": "webhookTestSuccess"\n}',
+      },
+    ],
+  },
+
+  {
     id: 'xray-settings',
     title: 'Xray Settings',
     description:

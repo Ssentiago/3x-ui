@@ -195,6 +195,9 @@ export class AllSetting {
   discordEnabledEvents = 'login.attempt,cpu.high';
   hasDiscordBotToken = false;
   clearDiscordBotToken = false;
+  webhookCpu = 80;
+  webhookMemory = 80;
+  webhookSourceName = '';
 
   constructor(data?: unknown) {
     if (data != null) {

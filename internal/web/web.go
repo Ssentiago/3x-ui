@@ -37,6 +37,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service/email"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service/panel"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service/tgbot"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/service/webhook"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/websocket"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 
@@ -414,6 +415,9 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 		s.discordNotifyEntryID = scheduleSettingJob(s.cron, "Discord notify", runtime, "@daily", job.NewDiscordNotifyJob(s.discordService))
 	}
 
+	// Webhook backup fan-out: one snapshot, every subscribed endpoint.
+	_, _ = s.cron.AddJob("@daily", job.NewWebhookBackupJob(&s.settingService))
+
 	// CPU monitor publishes cpu.high events; register it whenever any notifier
 	// (Telegram or Email) wants them, independent of the Telegram bot being on.
 	if s.cpuAlarmWanted() {
@@ -468,7 +472,7 @@ func (s *Server) cpuAlarmWanted() bool {
 			return true
 		}
 	}
-	return false
+	return s.webhookAlarmWanted(eventbus.EventCPUHigh)
 }
 
 // memoryAlarmWanted reports whether any notifier is configured to receive memory.high alerts.
@@ -505,7 +509,25 @@ func (s *Server) memoryAlarmWanted() bool {
 			return true
 		}
 	}
-	return false
+	return s.webhookAlarmWanted(eventbus.EventMemoryHigh)
+}
+
+// webhookAlarmWanted reports whether any enabled webhook endpoint subscribed
+// to the given metric event and the channel threshold is active.
+func (s *Server) webhookAlarmWanted(event eventbus.EventType) bool {
+	svc := webhook.EndpointService{}
+	targets, err := svc.EnabledTargets()
+	if err != nil || len(targets) == 0 {
+		return false
+	}
+	switch event {
+	case eventbus.EventCPUHigh:
+		return webhook.WantsCPU(&s.settingService, targets)
+	case eventbus.EventMemoryHigh:
+		return webhook.WantsMemory(&s.settingService, targets)
+	default:
+		return false
+	}
 }
 
 // Start initializes and starts the web server with configured settings, routes, and background jobs.
@@ -672,6 +694,9 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 
 	// Wire discord service to controller for test endpoint
 	controller.SetDiscordService(s.discordService)
+
+	// Register webhook subscriber (always — each endpoint filters at runtime)
+	s.bus.Subscribe("webhook-notifier", webhook.NewSubscriber(&s.settingService).HandleEvent)
 
 	serverService := &service.ServerService{}
 	inboundService := &service.InboundService{}

@@ -259,6 +259,11 @@ var defaultValueMap = map[string]string{
 	"discordMemory":        "80",
 	"discordLang":          "en-US",
 	"discordEnabledEvents": "login.attempt,cpu.high",
+
+	// Webhook channel (endpoints live in webhook_endpoints)
+	"webhookCpu":        "80",
+	"webhookMemory":     "80",
+	"webhookSourceName": "",
 }
 
 // SettingService provides business logic for application settings management.
@@ -1599,6 +1604,32 @@ func (s *SettingService) GetDiscordMemory() (int, error) {
 
 func (s *SettingService) SetDiscordMemory(value int) error {
 	return s.setInt("discordMemory", value)
+}
+
+// Webhook channel settings (endpoint list lives in webhook_endpoints)
+
+func (s *SettingService) GetWebhookCpu() (int, error) {
+	return s.getInt("webhookCpu")
+}
+
+func (s *SettingService) SetWebhookCpu(value int) error {
+	return s.setInt("webhookCpu", value)
+}
+
+func (s *SettingService) GetWebhookMemory() (int, error) {
+	return s.getInt("webhookMemory")
+}
+
+func (s *SettingService) SetWebhookMemory(value int) error {
+	return s.setInt("webhookMemory", value)
+}
+
+func (s *SettingService) GetWebhookSourceName() (string, error) {
+	return s.getString("webhookSourceName")
+}
+
+func (s *SettingService) SetWebhookSourceName(value string) error {
+	return s.setString("webhookSourceName", value)
 }
 
 func (s *SettingService) GetDiscordRunTime() (string, error) {

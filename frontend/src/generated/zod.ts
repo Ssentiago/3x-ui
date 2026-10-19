@@ -202,6 +202,9 @@ export const AllSettingSchema = z.object({
   webKeyFile: z.string(),
   webListen: z.string(),
   webPort: z.number().int().min(1).max(65535),
+  webhookCpu: z.number().int().min(0).max(100),
+  webhookMemory: z.number().int().min(0).max(100),
+  webhookSourceName: z.string().max(64),
 });
 export type AllSetting = z.infer<typeof AllSettingSchema>;
 
@@ -391,6 +394,9 @@ export const AllSettingViewSchema = z.object({
   webKeyFile: z.string(),
   webListen: z.string(),
   webPort: z.number().int().min(1).max(65535),
+  webhookCpu: z.number().int().min(0).max(100),
+  webhookMemory: z.number().int().min(0).max(100),
+  webhookSourceName: z.string().max(64),
 });
 export type AllSettingView = z.infer<typeof AllSettingViewSchema>;
 
@@ -598,6 +604,19 @@ export const ClientsSummarySchema = z.object({
   total: z.number().int(),
 });
 export type ClientsSummary = z.infer<typeof ClientsSummarySchema>;
+
+export const EndpointViewSchema = z.object({
+  allowPrivate: z.boolean(),
+  backupAttachFile: z.boolean(),
+  backupTransport: z.string(),
+  enabled: z.boolean(),
+  enabledEvents: z.string(),
+  hasSecret: z.boolean(),
+  id: z.number().int(),
+  name: z.string(),
+  url: z.string(),
+});
+export type EndpointView = z.infer<typeof EndpointViewSchema>;
 
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),
@@ -1122,6 +1141,13 @@ export const SubBalancerSchema = z.object({
 });
 export type SubBalancer = z.infer<typeof SubBalancerSchema>;
 
+export const TestResultSchema = z.object({
+  msg: z.string(),
+  stage: z.string(),
+  success: z.boolean(),
+});
+export type TestResult = z.infer<typeof TestResultSchema>;
+
 export const TrafficSchema = z.object({
   Down: z.number().int(),
   IsInbound: z.boolean(),
@@ -1159,4 +1185,19 @@ export const UserSchema = z.object({
   username: z.string(),
 });
 export type User = z.infer<typeof UserSchema>;
+
+export const WebhookEndpointSchema = z.object({
+  allowPrivate: z.boolean(),
+  backupAttachFile: z.boolean(),
+  backupTransport: z.string(),
+  createdAt: z.number().int(),
+  enabled: z.boolean(),
+  enabledEvents: z.string(),
+  hasSecret: z.boolean(),
+  id: z.number().int(),
+  name: z.string().max(64),
+  updatedAt: z.number().int(),
+  url: z.string().max(1024),
+});
+export type WebhookEndpoint = z.infer<typeof WebhookEndpointSchema>;
 

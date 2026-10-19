@@ -268,6 +268,11 @@ export default function AppSidebar() {
         label: t('pages.settings.discordSettings'),
       },
       {
+        key: '/settings#webhook',
+        icon: <ApiOutlined />,
+        label: t('pages.settings.webhookSettings'),
+      },
+      {
         key: '/settings#subscription',
         icon: <CloudServerOutlined />,
         label: t('pages.settings.subSettings'),

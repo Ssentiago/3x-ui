@@ -40,6 +40,7 @@ func run(root, outDir string) error {
 				"InboundFallback",
 				"Host",
 				"SubBalancer",
+				"WebhookEndpoint",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
@@ -110,6 +111,13 @@ func run(root, outDir string) error {
 				"AmneziaWGLogs",
 				"PeerActivity",
 				"HwidSlotStatus",
+			),
+		},
+		{
+			Path: resolveRel(root, "internal/web/service/webhook"),
+			StructAllow: setOf(
+				"EndpointView",
+				"TestResult",
 			),
 		},
 		{

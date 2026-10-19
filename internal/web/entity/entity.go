@@ -79,6 +79,10 @@ type AllSetting struct {
 	DiscordLang          string `json:"discordLang" form:"discordLang"`
 	DiscordEnabledEvents string `json:"discordEnabledEvents" form:"discordEnabledEvents"`
 
+	WebhookCpu        int    `json:"webhookCpu" form:"webhookCpu" validate:"gte=0,lte=100"`
+	WebhookMemory     int    `json:"webhookMemory" form:"webhookMemory" validate:"gte=0,lte=100"`
+	WebhookSourceName string `json:"webhookSourceName" form:"webhookSourceName" validate:"omitempty,max=64"`
+
 	OutboundDownThreshold int `json:"outboundDownThreshold" form:"outboundDownThreshold" validate:"gte=1,lte=100"`
 
 	TimeLocation    string `json:"timeLocation" form:"timeLocation"`

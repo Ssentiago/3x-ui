@@ -1575,6 +1575,30 @@ func (s *ServerService) backupSQLite() (string, func(), error) {
 	return backupPath, cleanup, nil
 }
 
+// SnapshotBackup writes a consistent database snapshot to a temp file and
+// returns its path. Callers that stream the bytes (webhooks) use the path;
+// callers that buffer use GetDb.
+func (s *ServerService) SnapshotBackup() (string, func(), error) {
+	if database.IsPostgres() {
+		data, err := s.exportPostgresDB()
+		if err != nil {
+			return "", nil, err
+		}
+		backupDir, err := os.MkdirTemp(filepath.Dir(config.GetDBPath()), ".x-ui-backup-")
+		if err != nil {
+			return "", nil, err
+		}
+		cleanup := func() { _ = os.RemoveAll(backupDir) }
+		path := filepath.Join(backupDir, "backup.dump")
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			cleanup()
+			return "", nil, err
+		}
+		return path, cleanup, nil
+	}
+	return s.backupSQLite()
+}
+
 // BackupFilename returns the filename for a database backup, named after the
 // panel's address so a downloaded or Telegram-sent backup identifies the server
 // it came from, followed by the current date and time (_YYYY-MM-DD_HHMMSS) so

@@ -595,6 +595,20 @@
             "maximum": 65535,
             "minimum": 1,
             "type": "integer"
+          },
+          "webhookCpu": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "webhookMemory": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "webhookSourceName": {
+            "maxLength": 64,
+            "type": "string"
           }
         },
         "required": [
@@ -774,7 +788,10 @@
           "webDomain",
           "webKeyFile",
           "webListen",
-          "webPort"
+          "webPort",
+          "webhookCpu",
+          "webhookMemory",
+          "webhookSourceName"
         ],
         "type": "object"
       },
@@ -1371,6 +1388,20 @@
             "maximum": 65535,
             "minimum": 1,
             "type": "integer"
+          },
+          "webhookCpu": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "webhookMemory": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "webhookSourceName": {
+            "maxLength": 64,
+            "type": "string"
           }
         },
         "required": [
@@ -1558,7 +1589,10 @@
           "webDomain",
           "webKeyFile",
           "webListen",
-          "webPort"
+          "webPort",
+          "webhookCpu",
+          "webhookMemory",
+          "webhookSourceName"
         ],
         "type": "object"
       },
@@ -2442,6 +2476,50 @@
           "online",
           "onlineCount",
           "total"
+        ],
+        "type": "object"
+      },
+      "EndpointView": {
+        "description": "EndpointView is the API shape: Secret is never serialized back to callers.",
+        "properties": {
+          "allowPrivate": {
+            "type": "boolean"
+          },
+          "backupAttachFile": {
+            "type": "boolean"
+          },
+          "backupTransport": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledEvents": {
+            "type": "string"
+          },
+          "hasSecret": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowPrivate",
+          "backupAttachFile",
+          "backupTransport",
+          "enabled",
+          "enabledEvents",
+          "hasSecret",
+          "id",
+          "name",
+          "url"
         ],
         "type": "object"
       },
@@ -4651,6 +4729,26 @@
         ],
         "type": "object"
       },
+      "TestResult": {
+        "description": "TestResult mirrors EmailService.SMTPTestResult for the test endpoint.",
+        "properties": {
+          "msg": {
+            "type": "string"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "msg",
+          "stage",
+          "success"
+        ],
+        "type": "object"
+      },
       "Traffic": {
         "description": "Traffic represents network traffic statistics for Xray connections.\nIt tracks upload and download bytes for inbound or outbound traffic.",
         "properties": {
@@ -4778,6 +4876,62 @@
         ],
         "type": "object"
       },
+      "WebhookEndpoint": {
+        "description": "WebhookEndpoint is one outbound HTTP notification target. Secret never\nleaves the server: list/test views report HasSecret instead of the value.",
+        "properties": {
+          "allowPrivate": {
+            "type": "boolean"
+          },
+          "backupAttachFile": {
+            "type": "boolean"
+          },
+          "backupTransport": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "enabledEvents": {
+            "type": "string"
+          },
+          "hasSecret": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "url": {
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "allowPrivate",
+          "backupAttachFile",
+          "backupTransport",
+          "createdAt",
+          "enabled",
+          "enabledEvents",
+          "hasSecret",
+          "id",
+          "name",
+          "updatedAt",
+          "url"
+        ],
+        "type": "object"
+      },
       "WebSocketEnvelope": {
         "type": "object",
         "required": [
@@ -4856,6 +5010,10 @@
     {
       "name": "API Tokens",
       "description": "Manage scoped Bearer tokens for programmatic auth. Tokens grant admin, monitor, or node-sync access, may expire, and are stored as SHA-256 hashes. The plaintext is returned only once at creation."
+    },
+    {
+      "name": "Webhooks",
+      "description": "Outbound HTTP notification endpoints. Each endpoint receives signed POSTs for the events it subscribed to: JSON envelopes for panel events, raw <code>application/octet-stream</code> for database backup files (or base64 attachments when backupTransport is json_base64). Secrets are write-only — list responses report hasSecret instead of the value."
     },
     {
       "name": "Xray Settings",
@@ -13449,6 +13607,358 @@
                 },
                 "example": {
                   "success": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/webhooks": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "List every webhook endpoint. Signing secrets are never returned.",
+        "operationId": "get_panel_api_webhooks",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "id": 1,
+                      "name": "n8n",
+                      "url": "https://n8n.example.com/hook/3x-ui",
+                      "enabled": true,
+                      "enabledEvents": "login.attempt,cpu.high,db.backup.completed",
+                      "allowPrivate": false,
+                      "backupTransport": "raw",
+                      "backupAttachFile": true,
+                      "hasSecret": true
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/webhooks/create": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Create a webhook endpoint. The secret is stored write-only and used to sign request bodies with HMAC-SHA256.",
+        "operationId": "post_panel_api_webhooks_create",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Display name."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "HTTPS or HTTP target URL."
+                  },
+                  "secret": {
+                    "type": "string",
+                    "description": "HMAC signing secret."
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether deliveries run."
+                  },
+                  "enabledEvents": {
+                    "type": "string",
+                    "description": "CSV of event names: outbound.down, outbound.up, xray.crash, node.down, node.up, cpu.high, memory.high, login.attempt, db.backup.completed, db.backup.failed."
+                  },
+                  "allowPrivate": {
+                    "type": "boolean",
+                    "description": "Allow private/internal target addresses (local n8n). Default false."
+                  },
+                  "backupTransport": {
+                    "type": "string",
+                    "description": "raw (default, application/octet-stream stream) or json_base64 (attachment inside the JSON envelope)."
+                  },
+                  "backupAttachFile": {
+                    "type": "boolean",
+                    "description": "Include the database snapshot file. When false, db.backup.completed carries metadata only."
+                  }
+                },
+                "required": [
+                  "name",
+                  "url"
+                ]
+              },
+              "example": {
+                "name": "n8n",
+                "url": "https://n8n.example.com/hook/3x-ui",
+                "secret": "shared-secret",
+                "enabled": true,
+                "enabledEvents": "login.attempt,db.backup.completed",
+                "allowPrivate": false,
+                "backupTransport": "raw",
+                "backupAttachFile": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "id": 1,
+                    "name": "n8n",
+                    "hasSecret": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/webhooks/update/{id}": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Update a webhook endpoint. A blank secret preserves the stored one unless clearSecret is true.",
+        "operationId": "post_panel_api_webhooks_update_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Display name."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Target URL."
+                  },
+                  "secret": {
+                    "type": "string",
+                    "description": "New secret; blank keeps the stored one."
+                  },
+                  "clearSecret": {
+                    "type": "boolean",
+                    "description": "Explicitly wipe the stored secret."
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "Whether deliveries run."
+                  },
+                  "enabledEvents": {
+                    "type": "string",
+                    "description": "CSV of event names."
+                  },
+                  "allowPrivate": {
+                    "type": "boolean",
+                    "description": "Allow private targets."
+                  },
+                  "backupTransport": {
+                    "type": "string",
+                    "description": "raw or json_base64."
+                  },
+                  "backupAttachFile": {
+                    "type": "boolean",
+                    "description": "Include the DB file."
+                  }
+                },
+                "required": [
+                  "name",
+                  "url"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "id": 1,
+                    "hasSecret": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/webhooks/delete/{id}": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Delete a webhook endpoint.",
+        "operationId": "post_panel_api_webhooks_delete_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint id.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/webhooks/test": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Send a signed webhook.test ping. Pass id to test a stored endpoint, or the full definition to test an unsaved draft. msg is an i18n key under pages.settings.",
+        "operationId": "post_panel_api_webhooks_test",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "description": "Stored endpoint id. 0 tests the draft fields below."
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Draft target URL."
+                  },
+                  "secret": {
+                    "type": "string",
+                    "description": "Draft signing secret."
+                  },
+                  "allowPrivate": {
+                    "type": "boolean",
+                    "description": "Allow private draft targets."
+                  }
+                }
+              },
+              "example": {
+                "id": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "stage": "send",
+                  "msg": "webhookTestSuccess"
                 }
               }
             }

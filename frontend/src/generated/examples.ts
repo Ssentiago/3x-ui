@@ -177,7 +177,10 @@ export const EXAMPLES: Record<string, unknown> = {
     "webDomain": "",
     "webKeyFile": "",
     "webListen": "",
-    "webPort": 1
+    "webPort": 1,
+    "webhookCpu": 0,
+    "webhookMemory": 0,
+    "webhookSourceName": ""
   },
   "AllSettingView": {
     "datepicker": "",
@@ -364,7 +367,10 @@ export const EXAMPLES: Record<string, unknown> = {
     "webDomain": "",
     "webKeyFile": "",
     "webListen": "",
-    "webPort": 1
+    "webPort": 1,
+    "webhookCpu": 0,
+    "webhookMemory": 0,
+    "webhookSourceName": ""
   },
   "AmneziaWGLogs": {
     "events": [
@@ -609,6 +615,17 @@ export const EXAMPLES: Record<string, unknown> = {
     ],
     "onlineCount": 1,
     "total": 2000
+  },
+  "EndpointView": {
+    "allowPrivate": false,
+    "backupAttachFile": false,
+    "backupTransport": "",
+    "enabled": false,
+    "enabledEvents": "",
+    "hasSecret": false,
+    "id": 0,
+    "name": "",
+    "url": ""
   },
   "FallbackParentInfo": {
     "masterId": 0,
@@ -1152,6 +1169,11 @@ export const EXAMPLES: Record<string, unknown> = {
     "strategy": "random",
     "updatedAt": 1710000000000
   },
+  "TestResult": {
+    "msg": "",
+    "stage": "",
+    "success": false
+  },
   "Traffic": {
     "Down": 2097152,
     "IsInbound": true,
@@ -1183,5 +1205,18 @@ export const EXAMPLES: Record<string, unknown> = {
     "id": 0,
     "password": "",
     "username": ""
+  },
+  "WebhookEndpoint": {
+    "allowPrivate": false,
+    "backupAttachFile": false,
+    "backupTransport": "",
+    "createdAt": 0,
+    "enabled": false,
+    "enabledEvents": "",
+    "hasSecret": false,
+    "id": 0,
+    "name": "",
+    "updatedAt": 0,
+    "url": ""
   }
 };

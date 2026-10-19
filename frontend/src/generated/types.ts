@@ -186,6 +186,9 @@ export interface AllSetting {
   webKeyFile: string;
   webListen: string;
   webPort: number;
+  webhookCpu: number;
+  webhookMemory: number;
+  webhookSourceName: string;
 }
 
 export interface AllSettingView {
@@ -374,6 +377,9 @@ export interface AllSettingView {
   webKeyFile: string;
   webListen: string;
   webPort: number;
+  webhookCpu: number;
+  webhookMemory: number;
+  webhookSourceName: string;
 }
 
 export interface AmneziaWGLogs {
@@ -566,6 +572,18 @@ export interface ClientsSummary {
   online: string[];
   onlineCount: number;
   total: number;
+}
+
+export interface EndpointView {
+  allowPrivate: boolean;
+  backupAttachFile: boolean;
+  backupTransport: string;
+  enabled: boolean;
+  enabledEvents: string;
+  hasSecret: boolean;
+  id: number;
+  name: string;
+  url: string;
 }
 
 export interface FallbackParentInfo {
@@ -1056,6 +1074,12 @@ export interface SubBalancer {
   updatedAt: number;
 }
 
+export interface TestResult {
+  msg: string;
+  stage: string;
+  success: boolean;
+}
+
 export interface Traffic {
   Down: number;
   IsInbound: boolean;
@@ -1088,5 +1112,19 @@ export interface User {
   id: number;
   password: string;
   username: string;
+}
+
+export interface WebhookEndpoint {
+  allowPrivate: boolean;
+  backupAttachFile: boolean;
+  backupTransport: string;
+  createdAt: number;
+  enabled: boolean;
+  enabledEvents: string;
+  hasSecret: boolean;
+  id: number;
+  name: string;
+  updatedAt: number;
+  url: string;
 }
 

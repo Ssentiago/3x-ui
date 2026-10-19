@@ -24,6 +24,10 @@ export const keys = {
     defaults: () => ['settings', 'defaults'] as const,
     factoryDefaults: () => ['settings', 'factoryDefaults'] as const,
   },
+  webhooks: {
+    root: () => ['webhooks'] as const,
+    list: () => ['webhooks', 'list'] as const,
+  },
   inbounds: {
     root: () => ['inbounds'] as const,
     slim: () => ['inbounds', 'slim'] as const,

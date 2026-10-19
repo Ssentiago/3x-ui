@@ -179,6 +179,9 @@ export const AllSettingSchema = z
     discordMemory: z.number().int().min(0).max(100).optional(),
     discordLang: z.string().optional(),
     discordEnabledEvents: z.string().optional(),
+    webhookCpu: z.number().int().min(0).max(100).optional(),
+    webhookMemory: z.number().int().min(0).max(100).optional(),
+    webhookSourceName: z.string().max(64).optional(),
   })
   .loose();
 
